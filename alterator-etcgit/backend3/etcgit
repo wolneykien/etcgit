@@ -1,0 +1,49 @@
+#!/bin/sh
+
+alterator_api_version=1
+po_domain="alterator-etcgit"
+
+. alterator-sh-functions
+. shell-config
+
+get_branch_name() {
+	(
+		cd /etc
+		git branch | sed -n -e 's/^\*[[:space:]]\+//p'
+	)
+}
+
+list_branches() {
+	(
+		cd /etc
+		git branch | sed -e 's/^\*\?[[:space:]]\+\(.*\)$/\1\t\1/'
+	) | write_enum
+}
+
+list_modified() {
+	(
+		cd /etc
+		git status | sed -n -e 's/^#[[:space:]]\+modified:[[:space:]]\+\(.*\)$/\1\t\1/p'
+	) | write_enum
+}
+
+on_message()
+{
+	case "$in_action" in
+		read)
+			write_string_param 'branch' "$(get_branch_name)"
+			;;
+		list)
+			case "$in__objects" in
+				branches)
+					list_branches
+					;;
+				*)
+					list_modified
+					;;
+			esac
+			;;
+	esac
+}
+
+message_loop
