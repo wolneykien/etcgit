@@ -27,6 +27,80 @@ list_modified() {
 	) | write_enum
 }
 
+_list_K() {
+        local rcd="$1"
+
+        find "$rcd" -name 'K*' | \
+        sed -e 's,^.*\(K[0-9]\+[^/]\+\)$/\1/'
+}
+
+_get_runlevel() {
+        runlevel | sed -n 's/^.*\([0-9]\+\)$/\1/p'
+}
+
+list_kill_seq_for_srv() {
+        local srvname="${1:-$in_service}"
+        local runlevel="$(_get_runlevel)"
+        [ -n "$runlevel" ] || return 1
+        runlevel=$((runlevel + 1))
+        local rcd="/etc/rc.d/$runlevel.d"
+        [ -d "$rcd" ] || return 2
+
+        for f in `_list_K "$rcd"`; do
+                echo "$f"
+                [ "${f##K*[0-9]}" != "$srvname" ] || break
+        done
+}
+
+_list_S() {
+        local rcd="$1"
+
+        find "$rcd" -name 'S*' | \
+        sed -e 's,^.*\(S[0-9]\+[^/]\+\)$/\1/'
+}
+
+list_start_seq_for_srv() {
+        local srvname="${1:-$in_service}"
+        local runlevel="$(_get_runlevel)"
+        [ -n "$runlevel" ] || return 1
+        local rcd="/etc/rc.d/$runlevel.d"
+        [ -d "$rcd" ] || return 2
+
+        for f in `_list_S "$rcd"`; do
+                echo "$f"
+                [ "${f##S*[0-9]}" != "$srvname" ] || break
+        done
+}
+
+_get_service_names_for_files() {
+        rpm -qfl "$@" | \
+        sed -n -e '/^\/etc\/init.d\/functions$/ d' \
+               -e '/^\/etc\/rc.d\/init.d\/functions$/ d' \
+               -e '/^\/etc\/init.d\/[^\/]\+$/ s/^.*\//p' \
+               -e '/^\/etc\/rc.d\/init.d\/[^\/]\+$/ s/^.*\//p' | \
+        uniq
+}
+
+_filter_SK() {
+        sed -e 's/^[SK][0-9]\+//'
+}
+
+list_kill_seq() {
+        for s in `_get_service_names_for_files `list_modified``; do
+                list_kill_seq_for_srv "$s"
+        done | \
+        sort -u | \
+        _filter_SK
+}
+
+list_start_seq() {
+        for s in `_get_service_names_for_files `list_modified``; do
+                list_start_seq_for_srv "$s"
+        done | \
+        sort -u | \
+        _filter_SK
+}
+
 on_message()
 {
 	case "$in_action" in
@@ -38,6 +112,20 @@ on_message()
 				branches)
 					list_branches
 					;;
+                                start)
+                                        if [ -n "${in_service:-}" ]; then
+                                                list_start_seq_for_srv | sort | _filter_SK
+                                        else
+                                                list_start_seq
+                                        fi
+                                        ;;
+                                stop)
+                                        if [ -n "${in_service:-}" ]; then
+                                                list_kill_seq_for_srv | sort | _filter_SK
+                                        else
+                                                list_kill_seq
+                                        fi
+                                        ;;
 				*)
 					list_modified
 					;;
