@@ -16,22 +16,23 @@ get_branch_name() {
 list_branches() {
 	(
 		cd /etc
-		git branch | sed -e 's/^\*\?[[:space:]]\+\(.*\)$/\1\t\1/'
-	) | write_enum
+		git branch | sed -e 's/^\*\?[[:space:]]\+//'
+	)
 }
 
 list_modified() {
 	(
 		cd /etc
-		git status | sed -n -e 's/^#[[:space:]]\+modified:[[:space:]]\+\(.*\)$/\1\t\1/p'
-	) | write_enum
+		git status | sed -n -e 's/^#[[:space:]]\+modified:[[:space:]]\+//p'
+	)
 }
 
 _list_K() {
         local rcd="$1"
 
         find "$rcd" -name 'K*' | \
-        sed -e 's,^.*\(K[0-9]\+[^/]\+\)$/\1/'
+        sed -e 's,^.*\(K[0-9]\+[^/]\+\)$,\1,' | \
+	sort
 }
 
 _get_runlevel() {
@@ -40,10 +41,8 @@ _get_runlevel() {
 
 list_kill_seq_for_srv() {
         local srvname="${1:-$in_service}"
-        local runlevel="$(_get_runlevel)"
-        [ -n "$runlevel" ] || return 1
-        runlevel=$((runlevel + 1))
-        local rcd="/etc/rc.d/$runlevel.d"
+        local runlevel=6
+        local rcd="/etc/rc.d/rc$runlevel.d"
         [ -d "$rcd" ] || return 2
 
         for f in `_list_K "$rcd"`; do
@@ -56,14 +55,15 @@ _list_S() {
         local rcd="$1"
 
         find "$rcd" -name 'S*' | \
-        sed -e 's,^.*\(S[0-9]\+[^/]\+\)$/\1/'
+        sed -e 's,^.*\(S[0-9]\+[^/]\+\)$,\1,' | \
+	sort
 }
 
 list_start_seq_for_srv() {
         local srvname="${1:-$in_service}"
         local runlevel="$(_get_runlevel)"
-        [ -n "$runlevel" ] || return 1
-        local rcd="/etc/rc.d/$runlevel.d"
+        [ -n "$runlevel" ] || runlevel=3
+        local rcd="/etc/rc.d/rc$runlevel.d"
         [ -d "$rcd" ] || return 2
 
         for f in `_list_S "$rcd"`; do
@@ -101,6 +101,10 @@ list_start_seq() {
         _filter_SK
 }
 
+_duplicate() {
+        sed -e 's/^.*$/&\t&/'
+}
+
 on_message()
 {
 	case "$in_action" in
@@ -110,24 +114,24 @@ on_message()
 		list)
 			case "$in__objects" in
 				branches)
-					list_branches
+					list_branches | _duplicate | write_enum
 					;;
                                 start)
                                         if [ -n "${in_service:-}" ]; then
-                                                list_start_seq_for_srv | sort | _filter_SK
+                                                list_start_seq_for_srv | _filter_SK | _duplicate | write_enum
                                         else
-                                                list_start_seq
+                                                list_start_seq | _duplicate | write_enum
                                         fi
                                         ;;
                                 stop)
                                         if [ -n "${in_service:-}" ]; then
-                                                list_kill_seq_for_srv | sort | _filter_SK
+                                                list_kill_seq_for_srv | _filter_SK | _duplicate | write_enum
                                         else
-                                                list_kill_seq
+                                                list_kill_seq | _duplicate | write_enum
                                         fi
                                         ;;
 				*)
-					list_modified
+					list_modified | _duplicate | write_enum
 					;;
 			esac
 			;;
