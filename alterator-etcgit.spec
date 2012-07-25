@@ -16,7 +16,7 @@ Requires: alterator-fbi >= 5.11-alt2
 Conflicts: alterator >= 5.0
 Conflicts: alterator-fbi >= 6.0
 
-BuildRequires: alterator rpm-macros-fillup
+BuildPreReq: alterator rpm-macros-fillup rpm-macros-alterator
 
 %description
 Alterator module to control versions of configuration files in /etc
