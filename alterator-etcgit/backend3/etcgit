@@ -380,9 +380,7 @@ on_message()
 		list)
 			case "$in__objects" in
 				branches)
-					if [ -z "$in_url" ]; then
-						list_local_branches | _duplicate | write_enum
-					else
+					if [ -n "$in_url" ]; then
 						list_remote_branches | _duplicate | write_enum
 					fi
 					;;
