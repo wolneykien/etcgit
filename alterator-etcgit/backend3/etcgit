@@ -124,7 +124,7 @@ list_start_seq_for_srv() {
         [ -n "$runlevel" ] || runlevel=3
         local rcd="/etc/rc.d/rc$runlevel.d"
         [ -d "$rcd" ] || return 2
-	local killseq="$(list_kill_seq_for_srv "$srvname" | _filter_SK)"
+	local killseq="${2:-$(list_kill_seq_for_srv "$srvname" | _filter_SK)}"
 	[ -n "$killseq" ] || return 0
 
 	local ssrvname=
@@ -137,6 +137,7 @@ list_start_seq_for_srv() {
 }
 
 _get_service_names_for_files() {
+	[ -n "$*" ] || return 0
         rpm -qfl "$@" | \
         sed -n -e '/^\/etc\/init.d\/functions$/ d' \
                -e '/^\/etc\/rc.d\/init.d\/functions$/ d' \
@@ -156,7 +157,9 @@ list_modified() {
 }
 
 list_kill_seq() {
-	for s in $(_get_service_names_for_files $(list_modified)); do
+	local srvs="${1-$(_get_service_names_for_files $(list_modified))}"
+
+	for s in $srvs; do
                 list_kill_seq_for_srv "$s"
         done | \
         sort -ru | \
@@ -164,8 +167,11 @@ list_kill_seq() {
 }
 
 list_start_seq() {
-	for s in $(_get_service_names_for_files $(list_modified)); do
-                list_start_seq_for_srv "$s"
+	local srvs="${1-$(_get_service_names_for_files $(list_modified))}"
+	local killseq="${2-}"
+
+	for s in $srvs; do
+                list_start_seq_for_srv "$s" "$killseq"
         done | \
         sort -u | \
         _filter_SK
@@ -233,14 +239,88 @@ reset_to() {
 }
 
 _list_commits() {
-	git log --pretty=oneline
+	local br="${1-$(get_branch_name)}"
+	local limit="${2-}"
+
+	git log ${limit:+-$limit} --pretty=oneline "$br"
 }
 
 list_commits() {
+	local br="${1-${in_branch-$(get_branch_name)}}"
+	local limit="${2-$in_limit}"
+
 	(
 		_cd_init /etc
-		_list_commits
+		_list_commits "$br" "$limit"
 	)
+}
+
+_checkout_head() {
+	local hd="$1"
+	local br="${2-$(get_branch_name)}"
+
+	git reset --hard "$hd" 1>/dev/null 2>&1 || return 1
+	git branch -M "$(_get_branch_name)" "$br" || return 2
+}
+
+checkout_head() {
+	local hd="${1-$in_commit}"
+	local br="${2-$(get_branch_name)}"
+
+	(
+		_cd_init /etc
+		_checkout_head "$hd" "$br"
+	)
+}
+
+reload_head() {
+	local hd="${1-$in_commit}"
+	[ -n "$hd" ] || hd='HEAD'
+	local srvs="$(_get_service_names_for_files $(list_modified))"
+	local killseq="$(list_kill_seq "$srvs")"
+	local startseq="$(list_start_seq "$srvs" "$killseq")"
+	local ret=0
+
+	for s in $killseq; do
+		if ! service "$s" stop 1>/dev/null 2>&1; then
+			write_error_message "`_ 'Unable to stop service: %s'`" "$s"
+			ret=1
+			break
+		fi
+	done
+
+	if [ $ret -eq 0 ]; then
+		checkout_head "$hd" "$(get_branch_name)"
+	fi
+
+	for s in $startseq; do
+		if ! service "$s" start 1>/dev/null 2>&1; then
+			[ $ret -eq 0 ] && write_error_message "`_ 'Unable to start service: %s'`" "$s"
+			ret=1
+		fi
+	done
+
+	return $ret
+}
+
+_get_branch_head() {
+	local br="${1-$(get_branch_name)}"
+
+	_list_commits "$br" 1 | sed -e 's/^\([^[:space:]]\+\)[[:space:]]\+.*$/\1/'
+}
+
+get_branch_head() {
+	local br="${1-${in_branch-$(get_branch_name)}}"
+
+	(
+		_cd_init /etc
+		_get_branch_head "$br"
+	)
+}
+
+write_error_message() {
+	local msg="$(printf "$@")"
+	write_error "$msg"
 }
 
 on_message()
@@ -251,6 +331,9 @@ on_message()
 				/)
 					write_string_param 'branch' "$(get_branch_name)"
 					write_string_param 'url' "$(get_branch_remote_url)"
+					;;
+				head)
+					write_string_param 'commit' "$(get_branch_head)"
 					;;
 			esac
 			;;
@@ -263,6 +346,9 @@ on_message()
 					if [ "$in_branch" ]; then
 						reset_to
 					fi
+					;;
+				head)
+					reload_head
 					;;
 			esac
 			;;
