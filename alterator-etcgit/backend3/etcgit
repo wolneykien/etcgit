@@ -292,7 +292,7 @@ on_message()
                                                 list_kill_seq | _duplicate | write_enum
                                         fi
                                         ;;
-				*)
+				/)
 					_list_modified | _format_status | write_enum
 					;;
 			esac
