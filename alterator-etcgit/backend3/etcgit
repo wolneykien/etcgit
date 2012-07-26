@@ -67,7 +67,7 @@ list_kill_seq_for_srv() {
 
         for f in `_list_K "$rcd"`; do
                 echo "$f"
-                [ "$(_get_linked_srv "$f")" != "$srvname" ] || break
+                [ "$(_get_linked_srv "$rcd/$f")" != "$srvname" ] || break
         done
 }
 
@@ -88,7 +88,7 @@ list_start_seq_for_srv() {
 
         for f in `_list_S "$rcd"`; do
                 echo "$f"
-                [ "$(_get_linked_srv "$f")" != "$srvname" ] || break
+                [ "$(_get_linked_srv "$rcd/$f")" != "$srvname" ] || break
         done
 }
 
@@ -96,8 +96,8 @@ _get_service_names_for_files() {
         rpm -qfl "$@" | \
         sed -n -e '/^\/etc\/init.d\/functions$/ d' \
                -e '/^\/etc\/rc.d\/init.d\/functions$/ d' \
-               -e '/^\/etc\/init.d\/[^\/]\+$/ s/^.*\//p' \
-               -e '/^\/etc\/rc.d\/init.d\/[^\/]\+$/ s/^.*\//p' | \
+               -e '/^\/etc\/init.d\/[^\/]\+$/ s/^.*\///p' \
+               -e '/^\/etc\/rc.d\/init.d\/[^\/]\+$/ s/^.*\///p' | \
         uniq
 }
 
@@ -106,11 +106,13 @@ _filter_SK() {
 }
 
 list_modified() {
-	_list_modified | sed -e 's/^.*[[:space:]]\+//'
+	_list_modified | \
+	sed -e 's/^[[:space:]]*[^[:space:]]\+[[:space:]]\+//' \
+	    -e 's,^.*$,/etc/&,'
 }
 
 list_kill_seq() {
-        for s in `_get_service_names_for_files `list_modified``; do
+	for s in $(_get_service_names_for_files $(list_modified)); do
                 list_kill_seq_for_srv "$s"
         done | \
         sort -u | \
@@ -118,7 +120,7 @@ list_kill_seq() {
 }
 
 list_start_seq() {
-        for s in `_get_service_names_for_files `list_modified``; do
+	for s in $(_get_service_names_for_files $(list_modified)); do
                 list_start_seq_for_srv "$s"
         done | \
         sort -u | \
@@ -130,7 +132,7 @@ _duplicate() {
 }
 
 _format_status() {
-	sed -e 's/^[[:space:]]*\(.*\)[[:space:]]\+\(.*\)$/\2\t\1/'
+	sed -e 's/^[[:space:]]*\([^[:space:]]\+\)[[:space:]]\+\(.*\)$/\2\t\1/'
 }
 
 
