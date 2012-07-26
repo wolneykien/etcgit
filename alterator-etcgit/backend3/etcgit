@@ -188,6 +188,11 @@ _format_status() {
 _change_url() {
 	local url="$1"
 	local br="${2:-$(_get_branch_name)}"
+
+	if [ -z "$url" ]; then
+		rm -rf .git
+		return 0
+	fi
 	if [ -z "$br" ]; then
 		hd="$(git ls-remote "$url" | sed -n -e '/[[:space:]]\+HEAD$/ {s/[[:space:]]\+HEAD$//p; q}')"
 		if [ -n "$hd" ]; then
@@ -362,10 +367,8 @@ on_message()
 		write)
 			case "$in__objects" in
 				/)
-					if [ "$in_url" ]; then
-						change_url
-					fi
-					if [ "$in_branch" ]; then
+					${in_url+change_url}
+					if [ -n "$in_branch" ]; then
 						reset_to
 					fi
 					;;
