@@ -22,11 +22,16 @@ get_branch_remote_url() {
         )
 }
 
-list_branches() {
+list_local_branches() {
 	(
 		cd /etc
 		git branch | sed -e 's/^\*\?[[:space:]]\+//'
 	)
+}
+
+list_remote_branches() {
+	local url="${1-$in_url}"
+	git ls-remote --heads "$url" | sed 's,^.*/,,'
 }
 
 list_modified() {
@@ -130,7 +135,11 @@ on_message()
 		list)
 			case "$in__objects" in
 				branches)
-					list_branches | _duplicate | write_enum
+					if [ -z "$in_url" ]; then
+						list_local_branches | _duplicate | write_enum
+					else
+						list_remote_branches | _duplicate | write_enum
+					fi
 					;;
                                 start)
                                         if [ -n "${in_service:-}" ]; then
