@@ -11,13 +11,17 @@ _cd_init() {
 	[ -d .git ] || git init 1>/dev/null 2>&1
 }
 
+_cd_if_git() {
+	[ -d "${1%/}/.git" ] && cd "$1"
+}
+
 _get_branch_name() {
 	git branch | sed -n -e 's/^\*[[:space:]]\+//p'
 }
 
 get_branch_name() {
 	(
-		_cd_init /etc
+		_cd_if_git /etc || return 0
 		_get_branch_name
 	)
 }
@@ -33,14 +37,14 @@ get_branch_remote_url() {
         local br="${1-}"
 
         (
-                _cd_init /etc
+		_cd_if_git /etc || return 0
 		_get_branch_remote_url "$br"
         )
 }
 
 list_local_branches() {
 	(
-		_cd_init /etc
+		_cd_if_git /etc || return 0
 		git branch | sed -e 's/^\*\?[[:space:]]\+//'
 	)
 }
@@ -52,7 +56,7 @@ list_remote_branches() {
 
 _list_modified() {
 	(
-		_cd_init /etc
+		_cd_if_git /etc || return 0
 		git status -s -uno
 	)
 }
@@ -255,7 +259,7 @@ list_commits() {
 	local limit="${2-$in_limit}"
 
 	(
-		_cd_init /etc
+		_cd_if_git /etc || return 0
 		_list_commits "$br" "$limit"
 	)
 }
@@ -318,7 +322,7 @@ get_branch_head() {
 	local br="${1-${in_branch-$(get_branch_name)}}"
 
 	(
-		_cd_init /etc
+		_cd_if_git /etc || return 0
 		_get_branch_head "$br"
 	)
 }
@@ -337,7 +341,7 @@ get_diff() {
 	local file="${1-$in_file}"
 
 	(
-		_cd_init /etc
+		_cd_if_git /etc || return 0
 		_get_diff "$file"
 	)
 }
