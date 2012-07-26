@@ -318,6 +318,25 @@ get_branch_head() {
 	)
 }
 
+_get_diff() {
+	local file="${1-$in_file}"
+
+	if [ -n "$file" ]; then
+		git diff -- "$file"
+	else
+		git diff
+	fi
+}
+
+get_diff() {
+	local file="${1-$in_file}"
+
+	(
+		_cd_init /etc
+		_get_diff "$file"
+	)
+}
+
 write_error_message() {
 	local msg="$(printf "$@")"
 	write_error "$msg"
@@ -334,6 +353,9 @@ on_message()
 					;;
 				head)
 					write_string_param 'commit' "$(get_branch_head)"
+					;;
+				diff)
+					write_string_param 'diff' "$(get_diff)"
 					;;
 			esac
 			;;
