@@ -85,10 +85,14 @@ list_start_seq_for_srv() {
         [ -n "$runlevel" ] || runlevel=3
         local rcd="/etc/rc.d/rc$runlevel.d"
         [ -d "$rcd" ] || return 2
+	local killseq="$(list_kill_seq_for_srv "$srvname" | _filter_SK)"
+	[ -n "$killseq" ] || return 0
 
+	local ksrvname=
         for f in `_list_S "$rcd"`; do
+		ksrvname="$(_get_linked_srv "$rcd/$f")"
+		echo $killseq | grep -qw "$ksrvname" || continue
                 echo "$f"
-                [ "$(_get_linked_srv "$rcd/$f")" != "$srvname" ] || break
         done
 }
 
