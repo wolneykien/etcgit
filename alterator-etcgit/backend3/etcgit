@@ -67,6 +67,17 @@ _list_rS() {
 	sort -r
 }
 
+_is_srv_blacklisted() {
+	case "$1" in
+		ahttpd|alteratord|plymouth|local)
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
 list_kill_seq_for_srv() {
         local srvname="${1:-$in_service}"
         local runlevel="$(_get_runlevel)"
@@ -74,9 +85,12 @@ list_kill_seq_for_srv() {
         local rcd="/etc/rc.d/rc$runlevel.d"
         [ -d "$rcd" ] || return 2
 
+	local ksrvname=
         for f in `_list_rS "$rcd"`; do
+		ksrvname="$(_get_linked_srv "$rcd/$f")"
+		_is_srv_blacklisted "$ksrvname" && continue
                 echo "$f"
-                [ "$(_get_linked_srv "$rcd/$f")" != "$srvname" ] || break
+                [ "$ksrvname" != "$srvname" ] || break
         done
 }
 
@@ -97,10 +111,11 @@ list_start_seq_for_srv() {
 	local killseq="$(list_kill_seq_for_srv "$srvname" | _filter_SK)"
 	[ -n "$killseq" ] || return 0
 
-	local ksrvname=
+	local ssrvname=
         for f in `_list_S "$rcd"`; do
-		ksrvname="$(_get_linked_srv "$rcd/$f")"
-		echo $killseq | grep -qw "$ksrvname" || continue
+		ssrvname="$(_get_linked_srv "$rcd/$f")"
+		echo $killseq | grep -qw "$ssrvname" || continue
+		_is_srv_blacklisted "$ssrvname" && continue
                 echo "$f"
         done
 }
