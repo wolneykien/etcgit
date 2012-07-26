@@ -232,6 +232,17 @@ reset_to() {
 	)
 }
 
+_list_commits() {
+	git log --pretty=oneline
+}
+
+list_commits() {
+	(
+		_cd_init /etc
+		_list_commits
+	)
+}
+
 on_message()
 {
 	case "$in_action" in
@@ -263,6 +274,9 @@ on_message()
 					else
 						list_remote_branches | _duplicate | write_enum
 					fi
+					;;
+				commits)
+					list_commits | write_enum
 					;;
                                 start)
                                         if [ -n "${in_service:-}" ]; then
