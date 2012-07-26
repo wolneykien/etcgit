@@ -34,10 +34,10 @@ list_remote_branches() {
 	git ls-remote --heads "$url" | sed 's,^.*/,,'
 }
 
-list_modified() {
+_list_modified() {
 	(
 		cd /etc
-		git status | sed -n -e 's/^#[[:space:]]\+modified:[[:space:]]\+//p'
+		git status -s -uno
 	)
 }
 
@@ -105,6 +105,10 @@ _filter_SK() {
         sed -e 's/^[SK][0-9]\+//'
 }
 
+list_modified() {
+	_list_modified | sed -e 's/^.*[[:space:]]\+//'
+}
+
 list_kill_seq() {
         for s in `_get_service_names_for_files `list_modified``; do
                 list_kill_seq_for_srv "$s"
@@ -124,6 +128,11 @@ list_start_seq() {
 _duplicate() {
         sed -e 's/^.*$/&\t&/'
 }
+
+_format_status() {
+	sed -e 's/^[[:space:]]*\(.*\)[[:space:]]\+\(.*\)$/\2\t\1/'
+}
+
 
 on_message()
 {
@@ -156,7 +165,7 @@ on_message()
                                         fi
                                         ;;
 				*)
-					list_modified | _duplicate | write_enum
+					_list_modified | _format_status | write_enum
 					;;
 			esac
 			;;
