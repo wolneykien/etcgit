@@ -6,9 +6,14 @@ po_domain="alterator-etcgit"
 . alterator-sh-functions
 . shell-config
 
+_cd_init() {
+	cd "$1"
+	[ -d .git ] || git init
+}
+
 get_branch_name() {
 	(
-		cd /etc
+		_cd_init /etc
 		git branch | sed -n -e 's/^\*[[:space:]]\+//p'
 	)
 }
@@ -17,14 +22,14 @@ get_branch_remote_url() {
         local br="$1"
 
         (
-                cd /etc
+                _cd_init /etc
                 git config remote.$(git config branch.$br.remote).url
         )
 }
 
 list_local_branches() {
 	(
-		cd /etc
+		_cd_init /etc
 		git branch | sed -e 's/^\*\?[[:space:]]\+//'
 	)
 }
@@ -36,7 +41,7 @@ list_remote_branches() {
 
 _list_modified() {
 	(
-		cd /etc
+		_cd_init /etc
 		git status -s -uno
 	)
 }
