@@ -189,6 +189,32 @@ _format_status() {
 	sed -e 's/^[[:space:]]*\([^[:space:]]\+\)[[:space:]]\+\(.*\)$/\2\t\1/'
 }
 
+_get_branch_for_head() {
+	local url="${1:-$(_get_branch_remote_url)}"
+	[ -n "$url" ] || return 0
+	local hd="$2"
+	[ -n "$hd" ] || return 0
+
+	git ls-remote --heads "$url" | sed -n -e "/^$hd[[:space:]]\\+/ {s,^.*[[:space:]]\\+refs/heads/,,p; q}"
+}
+
+_get_first_branch() {
+	local url="${1:-$(_get_branch_remote_url)}"
+	[ -n "$url" ] || return 0
+
+	git ls-remote --heads "$url" | sed -e '1 {s,^.*[[:space:]]\+refs/heads/,,; q}'
+}
+
+_get_head_branch() {
+	local url="${1:-$(_get_branch_remote_url)}"
+	[ -n "$url" ] || return 0
+	local hd="$(git ls-remote "$url" | sed -n -e '/[[:space:]]\+HEAD$/ {s/[[:space:]]\+HEAD$//p; q}')"
+
+	if [ -n "$hd" ]; then
+		_get_branch_for_head "$url" "$hd"
+	fi
+}
+
 _change_url() {
 	local url="$1"
 	local br="${2:-$(_get_branch_name)}"
@@ -198,26 +224,55 @@ _change_url() {
 		return 0
 	fi
 	if [ -z "$br" ]; then
-		hd="$(git ls-remote "$url" | sed -n -e '/[[:space:]]\+HEAD$/ {s/[[:space:]]\+HEAD$//p; q}')"
-		if [ -n "$hd" ]; then
-			br="$(git ls-remote --heads "$url" | sed -n -e "/^$hd[[:space:]]\\+/ {s,^.*[[:space:]]\\+refs/heads/,,p; q}")"
-		else
-			br="$(git ls-remote --heads "$url" | sed -e '1 {s,^.*[[:space:]]\+refs/heads/,,; q}')"
-		fi
+		br="$(_get_head_branch "$url")"
+	fi
+	if [ -z "$br" ]; then
+		br="$(_get_first_branch "$url")"
 	fi
 	if [ -n "$br" ]; then
-		_reset_to "$url" "$br" || return $?
+		_reset_to_branch "$url" "$br" || return $?
 	fi
 }
 
-_reset_to() {
-	local url="$1"
-	local br="$2"
-	local hd="$(git ls-remote --heads "$url" | sed -n -e "/[[:space:]]\\+refs\\/heads\\/$br\$/ {s/[[:space:]]\\+.*\$//p; q}")"
+_reset_to_head() {
+	local url="${1:-$(_get_branch_remote_url)}"
+	local hd="${2-}"
+	[ -n "$hd" ] || return 0
+	local br="${3:-}"
+	[ -n "$br" ] || br="$(_get_branch_for_head "$url" "$hd")"
+
+	git fetch "$url" "$br" 1>/dev/null 2>&1 || return 1
+	git reset "$hd" 1>/dev/null 2>&1 || return 2
+	[ -n "$br" ] && git branch -M "$(_get_branch_name)" "$br" || return 3
+}
+
+reset_to_head() {
+	local url="$(_get_branch_remote_url)"
+	local hd="${1-$in_head}"
+	local br="${2-}"
+
+	(
+		_cd_init /etc
+		_reset_to_head "$url" "$hd" "$br"
+	)
+}
+
+_get_head_for_branch() {
+	local url="${1:-$(_get_branch_remote_url)}"
+	[ -n "$url" ] || return 0
+	local br="${2-$(_get_branch_name)}"
+	[ -n "$br" ] || return 0
+
+	git ls-remote --heads "$url" | sed -n -e "/[[:space:]]\\+refs\\/heads\\/$br\$/ {s/[[:space:]]\\+.*\$//p; q}"
+}
+
+_reset_to_branch() {
+	local url="${1:-$(_get_branch_remote_url)}"
+	local br="${2:-$(_get_branch_name)}"
+	local hd="$(_get_head_for_branch "$url" "$br")"
+
 	if [ -n "$hd" ]; then
-		git fetch "$url" "$br" 1>/dev/null 2>&1 || return 2
-		git reset "$hd" 1>/dev/null 2>&1 || return 3
-		git branch -M "$(_get_branch_name)" "$br" || return 4
+		_reset_to_head "$url" "$hd" "$br" || return $?
 	else
 		return 1
 	fi
@@ -234,16 +289,15 @@ change_url() {
 	)
 }
 
-reset_to() {
+reset_to_branch() {
 	local br="${1-$in_branch}"
-	[ -n "$br" ] || return 0
 	local url=
 
 	(
 		_cd_init /etc
 		url="$(_get_branch_remote_url)"
-		[ -n "$url" ] || return 2
-		_reset_to "$url" "$br" || return $?
+		[ -n "$url" ] || return 1
+		_reset_to_branch "$url" "$br" || return $?
 	)
 }
 
@@ -284,7 +338,11 @@ checkout_head() {
 
 reload_head() {
 	local hd="${1-$in_commit}"
-	[ -n "$hd" ] || hd='HEAD'
+	local br="$(get_branch_name)"
+	[ -n "$hd" ] || hd="$br"
+
+	reset_to_head "$hd" "$br" || return $?
+
 	local srvs="$(_get_service_names_for_files $(list_modified))"
 	local killseq="$(list_kill_seq "$srvs")"
 	local startseq="$(list_start_seq "$srvs" "$killseq")"
@@ -299,7 +357,7 @@ reload_head() {
 	done
 
 	if [ $ret -eq 0 ]; then
-		checkout_head "$hd" "$(get_branch_name)"
+		checkout_head "$hd" "$br"
 	fi
 
 	for s in $startseq; do
@@ -308,6 +366,8 @@ reload_head() {
 			ret=1
 		fi
 	done
+
+	reset_to_branch "$br"
 
 	return $ret
 }
@@ -373,7 +433,7 @@ on_message()
 				/)
 					${in_url+change_url}
 					if [ -n "$in_branch" ]; then
-						reset_to
+						reset_to_branch
 					fi
 					;;
 				head)
