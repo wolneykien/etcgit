@@ -54,6 +54,14 @@ list_remote_branches() {
 	git ls-remote --heads "$url" | sed 's,^.*/,,'
 }
 
+_dump_file_permissions() {
+        stat -c '%n 0%a:%U:%G' $(find $(git ls-files) -type f | sed -n -e ':b H; s,/[^/]\+$,/,; t b; z; x; p; d' | sort -u)
+}
+
+_apply_file_permissions() {
+        eval "$(egrep -v '/ 0755|[^/] 0644' | sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
+}
+
 _list_modified() {
 	(
 		_cd_if_git /etc || return 0
