@@ -59,7 +59,7 @@ _dump_file_permissions() {
 }
 
 _apply_file_permissions() {
-        eval "$(egrep -v '/ 0755|[^/] 0644' | sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
+        eval "$(sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
 }
 
 _list_modified() {
