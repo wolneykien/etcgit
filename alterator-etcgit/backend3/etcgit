@@ -449,6 +449,44 @@ get_diff() {
 	)
 }
 
+_get_default_message() {
+        echo "`_ 'Commit'`"
+}
+
+_commit_tree() {
+        local msg="${1-$(_get_default_message)}"
+        local ret=
+
+        if [ -e .gitignore ]; then
+                git add . 1>/dev/null 2>&1
+                ret=$?
+                if [ $ret -eq 0 ]; then
+                        _dump_file_permissions >$PERMS
+                        ret=$?
+                fi
+                if [ $ret -eq 0 ]; then
+                        git add -f $PERMS 1>/dev/null 2>&1
+                        ret=$?
+                fi
+                if [ $ret -eq 0 ]; then
+                        git commit -a -m "$msg" 1>/dev/null 2>&1
+                        ret=$?
+                fi
+                git reset . 1>/dev/null 2>&1
+        fi
+
+        return $ret
+}
+
+commit_tree() {
+        local msg="${1-$in_msg}"
+
+        (
+	        _cd_if_git /etc || return 0
+                _commit_tree "$msg"
+        )
+}
+
 write_error_message() {
 	local msg="$(printf "$@")"
 	write_error "$msg"
@@ -484,7 +522,11 @@ on_message()
 					fi
 					;;
 				head)
-					reload_head
+                                        if [ "$in_commit" = '#t' ]; then
+                                                commit_tree && write_string_param 'commit' "$(get_branch_head)"
+                                        else
+                                                reload_head
+                                        fi
 					;;
 			esac
 			;;
