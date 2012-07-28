@@ -319,7 +319,7 @@ _list_commits() {
 	local br="${1-$(get_branch_name)}"
 	local limit="${2-}"
 
-	git log ${limit:+-$limit} --pretty=oneline "$br"
+        git log --format='%H%x09%ci%x09%s' ${limit:+-$limit} "$br"
 }
 
 list_commits() {
@@ -496,7 +496,12 @@ on_message()
 					fi
 					;;
 				commits)
-					list_commits | write_enum
+					list_commits | (
+                                                IFS='	'
+                                                while read h t m; do
+                                                        write_table_item 'head' "$h" 'timestamp' "$t" 'msg' "$m"
+                                                done
+                                        )
 					;;
                                 start)
                                         if [ -n "${in_service:-}" ]; then
