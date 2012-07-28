@@ -335,9 +335,23 @@ list_commits() {
 _checkout_head() {
 	local hd="$1"
 	local br="${2-$(get_branch_name)}"
+        local mask="$(umask)"
+        local ret=
 
-	git reset --hard "$hd" 1>/dev/null 2>&1 || return 1
-	git branch -M "$(_get_branch_name)" "$br" || return 2
+        umask 0027
+	git reset --hard "$hd" 1>/dev/null 2>&1
+        ret=$?
+        if [ $ret -eq 0 ] && [ -e $PERMS ]; then
+                _apply_file_permissions <$PERMS
+                ret=$?
+        fi
+        if [ $ret -eq 0 ]; then
+                git branch -M "$(_get_branch_name)" "$br" 1>/dev/null 2>&1
+                ret=$?
+        fi
+        umask $mask 1>/dev/null 2>&1
+
+        return $ret
 }
 
 checkout_head() {
