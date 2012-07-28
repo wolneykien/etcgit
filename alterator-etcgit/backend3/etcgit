@@ -65,7 +65,9 @@ _apply_file_permissions() {
 _list_modified() {
 	(
 		_cd_if_git /etc || return 0
+                [ -e .gitignore ] && git add . 1>/dev/null 2>&1
 		git status -s -uno
+                git reset . 1>/dev/null 2>&1
 	)
 }
 
