@@ -6,6 +6,8 @@ po_domain="alterator-etcgit"
 . alterator-sh-functions
 . shell-config
 
+PERMS=.git-file-permissions
+
 _cd_init() {
 	cd "$1"
 	[ -d .git ] || git init 1>/dev/null 2>&1
@@ -66,6 +68,8 @@ _list_modified() {
 	(
 		_cd_if_git /etc || return 0
                 [ -e .gitignore ] && git add . 1>/dev/null 2>&1
+                _dump_file_permissions >$PERMS
+                git add -f $PERMS 1>/dev/null 2>&1
 		git status -s -uno
                 git reset . 1>/dev/null 2>&1
 	)
