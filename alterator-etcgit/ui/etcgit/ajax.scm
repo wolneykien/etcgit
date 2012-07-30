@@ -66,6 +66,7 @@
   (form-bind "fetch" "click"
     (lambda ()
       (fetch-repo)))
+  (form-bind "url" "enter" (lambda () #f))
   (form-bind "branch" "change"
     (lambda ()
       (reset-to)))
