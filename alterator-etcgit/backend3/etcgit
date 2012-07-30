@@ -261,7 +261,7 @@ _reset_to_head() {
 }
 
 reset_to_head() {
-	local url="$(_get_branch_remote_url)"
+	local url="$(get_branch_remote_url)"
 	local hd="${1-$in_head}"
 	local br="${2-}"
 
@@ -401,7 +401,7 @@ reload_head() {
 }
 
 _get_branch_head() {
-	local br="${1-$(get_branch_name)}"
+	local br="${1-$(_get_branch_name)}"
 
 	_list_commits "$br" 1 | sed -e 's/^\([^[:space:]]\+\)[[:space:]]\+.*$/\1/'
 }
@@ -454,9 +454,9 @@ _get_default_message() {
 }
 
 _push_branch() {
-        local url="${1-$(get_branch_remote_url)}"
+        local url="${1-$(_get_branch_remote_url)}"
         [ -n "$url" ] || return 1
-        local br="${2-$(get_branch_name)}"
+        local br="${2-$(_get_branch_name)}"
         [ -n "$br" ] || return 2
 
         git push "$url" "$br" 1>/dev/null 2>&1
@@ -464,8 +464,8 @@ _push_branch() {
 
 _commit_tree() {
         local msg="${1-$(_get_default_message)}"
-        local url="${2-$(get_branch_remote_url)}"
-        local br="${3-$(get_branch_name)}"
+        local url="${2-$(_get_branch_remote_url)}"
+        local br="${3-$(_get_branch_name)}"
         local ret=
 
         git branch -M "$(_get_branch_name)" "$br" 1>/dev/null 2>&1
