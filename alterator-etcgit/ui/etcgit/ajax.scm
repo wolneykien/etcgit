@@ -52,7 +52,8 @@
     (lambda ()
       (woo-write "/etcgit"
 		 'url (form-value "url"))
-      (read-repo))))
+      (read-repo)
+      (read-files))))
 
 (define (reset-to)
   (catch/message
