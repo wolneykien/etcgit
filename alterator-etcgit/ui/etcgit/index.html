@@ -1,0 +1,33 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html wf="none">
+  <body>
+    <form method="POST">
+      <div>
+	<span translate="_">Configuration repository:</span>
+	<input type="text" name="url" />
+	<input type="button" name="fetch" value="Fetch" />
+	<span translate="_">Profile:</span>
+	<select name="branch" />
+	<input type="button" name="history" value="View log…" />
+	<input type="button" name="update" value="Update profile" />
+	<input type="button" name="new" value="New profile…" />
+      </div>
+      <div>
+      <table name="files" class="alterator-listbox" width="100%">
+        <thead class="frame-table">
+          <tr>
+            <th><span translate="_">Filename</span></th>
+            <th><span translate="_">Status</span></th>
+          </tr>
+        </thead>
+        <tbody class="frame-table">
+          <tr>
+            <td><span class="alterator-label" name="filename" />&nbsp;</td>
+            <td><span class="alterator-label" name="status" />&nbsp;</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </form>
+  </body>
+</html>
