@@ -434,9 +434,14 @@ _get_diff() {
 	local file="${1-$in_file}"
 
 	if [ -n "$file" ]; then
-		git diff -- "$file"
+                git add -f "$file" 1>/dev/null 2>&1
+		git diff HEAD -- "$file"
+                git reset "$file" 1>/dev/null 2>&1
 	else
-		git diff
+                _dump_file_permissions >$PERMS
+                git add -f $PERMS 1>/dev/null 2>&1
+		git diff HEAD
+                git reset . 1>/dev/null 2>&1
 	fi
 }
 
