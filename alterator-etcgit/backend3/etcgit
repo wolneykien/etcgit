@@ -325,9 +325,17 @@ _list_commits() {
 list_commits() {
 	local hd="${1-${in_head-$(get_branch_name)}}"
 	local limit="${2-$in_limit}"
+        local br="${in_branch-}"
+        local url=
 
 	(
 		_cd_if_git /etc || return 0
+                if [ -n "$br" ]; then
+                        url="${in_url-$(get_branch_remote_url)}"
+                        git fetch "$url" "$br" 1>/dev/null 2>&1 || return 1
+                        hd="$(git ls-remote --heads "$url" | sed -n "s,[[:space:]]\+refs/heads/$br,,p")"
+                        [ -n "$hd" ] || return 2
+                fi
 		_list_commits "$hd" "$limit"
 	)
 }

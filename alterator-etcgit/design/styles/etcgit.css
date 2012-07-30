@@ -1,4 +1,12 @@
 
+table.alterator-listbox tbody tr.odd td {
+        background-color:#eee8ff;
+}
+
+table.alterator-listbox tbody tr.even td {
+        background-color:#ffffff;
+}
+
 table.alterator-listbox tbody tr.M td, span.M {
         background-color:#ff88ff;
 }

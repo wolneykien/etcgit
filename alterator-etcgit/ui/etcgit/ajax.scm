@@ -68,5 +68,9 @@
   (form-bind "branch" "change"
     (lambda ()
       (reset-to)))
+  (form-bind "history" "click"
+    (lambda ()
+      (form-replace "/etcgit/log"
+		    'branch (form-value "branch"))))
   (read-repo)
   (read-files))
