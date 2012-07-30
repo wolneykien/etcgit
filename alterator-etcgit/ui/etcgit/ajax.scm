@@ -1,21 +1,9 @@
 (define-module (ui etcgit ajax)
   :use-module (srfi srfi-1)
-  :use-module (srfi srfi-19)
-  :use-module (ice-9 format)
   :use-module (alterator ajax)
-  :use-module (alterator algo)
   :use-module (alterator plist)
   :use-module (alterator woo)
-  :use-module (alterator gettext)
   :export (init))
-
-(define _ (lambda (msg) msg))
-
-(define (update-gettext)
-  (let ((translate (make-translator "alterator-etcgit" (string-split (form-value "language") #\;))))
-    (set! _
-          (lambda (msg)
-	    (translate msg)))))
 
 (define (read-repo)
   (catch/message
@@ -82,6 +70,5 @@
   (form-bind "branch" "change"
     (lambda ()
       (reset-to)))
-  (update-gettext)
   (read-repo)
   (read-files))
