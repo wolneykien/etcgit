@@ -453,8 +453,18 @@ _get_default_message() {
         echo "`_ 'Commit'`"
 }
 
+_push_branch() {
+        local url="${1-$(get_branch_remote_url)}"
+        [ -n "$url" ] || return 1
+        local br="${2-$(get_branch_name)}"
+        [ -n "$br" ] || return 2
+
+        git push "$url" "$br" 1>/dev/null 2>&1
+}
+
 _commit_tree() {
         local msg="${1-$(_get_default_message)}"
+        local url="${2-$(get_branch_remote_url)}"
         local ret=
 
         if [ -e .gitignore ]; then
@@ -472,6 +482,11 @@ _commit_tree() {
                         git commit -a -m "$msg" 1>/dev/null 2>&1
                         ret=$?
                 fi
+                if [ $ret -eq 0 ]; then
+                        _push_branch "$url"
+                        ret=$?
+                        [ $ret -eq 0 ] || git reset HEAD^ 1>/dev/null 2>&1
+                fi
                 git reset . 1>/dev/null 2>&1
         fi
 
@@ -480,10 +495,16 @@ _commit_tree() {
 
 commit_tree() {
         local msg="${1-$in_msg}"
+        local url="${2-$(get_branch_remote_url)}"
+
+        if [ -z "$url" ]; then
+                write_error_message "`_ 'Please, set the repo URL first'`"
+                return 1
+        fi
 
         (
 	        _cd_if_git /etc || return 0
-                _commit_tree "$msg"
+                _commit_tree "$msg" "$url"
         )
 }
 
