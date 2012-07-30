@@ -231,7 +231,7 @@ _get_head_branch() {
 
 _change_url() {
 	local url="$1"
-	local br="${2:-$(_get_branch_name)}"
+	local br="${2-$(_get_branch_name)}"
 
 	if [ -z "$url" ]; then
 		rm -rf .git
