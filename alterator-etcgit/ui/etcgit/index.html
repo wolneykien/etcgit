@@ -1,5 +1,8 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
 <html wf="none">
+  <head>
+    <link type="text/css" rel="stylesheet" href="/design/styles/etcgit.css" />
+  </head>
   <body>
     <form method="POST">
       <div>
@@ -14,17 +17,18 @@
 	<input type="button" name="new" value="New profile…" />
       </div>
       <div>
-      <h4><span translate="_">Modified files</span></h4>
+      <h3><span translate="_">Modified files</span></h3>
+      <span class="A"><b>A</b></span> — <span translate="_">new</span>, <span class="M"><b>M</b></span> — <span translate="_">modified</span>, <span class="D"><b>D</b></span> — <span translate="_">deleted</span>
       <table name="files" class="alterator-listbox" width="100%">
         <thead class="frame-table">
           <tr>
-            <th><span translate="_">Filename</span></th>
+            <th width="99%"><span translate="_">Filename</span></th>
             <th><span translate="_">Status</span></th>
           </tr>
         </thead>
         <tbody class="frame-table">
-          <tr>
-            <td nowrap="nowrap">
+          <tr alterator-class="class">
+            <td nowrap="nowrap" width="99%">
 	      <a class="alterator-href" prefix-href="/etcgit/diff?file=" name="filename">
 	        <span class="alterator-label" name="filename" />
 	      </a>

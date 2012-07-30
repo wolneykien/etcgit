@@ -16,30 +16,28 @@
 
 (define (format-row row proc)
   (if (plist? row)
-    (apply fold
-           (append
-             (list (lambda (n v rlist)
-		     (append rlist (list n v)))
-		   '())
-	     ((lambda (ns-vs)
-	        (list (car ns-vs)
-		      (apply proc (cdr ns-vs))))
-	        (plist-fold
-	          (lambda (n v ns-vs)
-	            (cons
-	              (append (car ns-vs) (list n))
-	              (append (cdr ns-vs) (list v))))
-	          (cons '() '())
-	          row))))
+    (let* ((ns-vs (plist-fold
+	            (lambda (n v ns-vs)
+	              (cons
+	                (append (car ns-vs) (list n))
+	                (append (cdr ns-vs) (list v))))
+		    (cons '() '())
+		    row))
+           (res (apply proc (cdr ns-vs)))
+	   (ns (car ns-vs))
+	   (vs (list-head res (length ns)))
+	   (aux (list-tail res (length vs))))
+      (append
+        (fold (lambda (n v rlist)
+	        (append rlist (list n v)))
+	      '()
+	      ns
+	      vs)
+	aux))
     (cons (car row) (format-row (cdr row) proc))))
 
 (define (format-file filename status)
-  (list filename
-	(case (string->symbol status)
-	  ((M) (_ "modified"))
-	  ((A) (_ "new"))
-	  ((D) (_ "deleted"))
-	  (else status))))
+  (list filename status 'class status))
 
 (define (read-files)
   (catch/message

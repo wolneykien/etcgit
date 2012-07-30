@@ -1,0 +1,13 @@
+
+table.alterator-listbox tbody tr.M td, span.M {
+        background-color:#ff88ff;
+}
+
+table.alterator-listbox tbody tr.A td, span.A {
+        background-color:#88ff88;
+}
+
+table.alterator-listbox tbody tr.D td, span.D {
+        background-color:#880000;
+	color:#ffffff;
+}
