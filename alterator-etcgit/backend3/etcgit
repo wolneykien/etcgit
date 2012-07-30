@@ -317,14 +317,17 @@ reset_to_branch() {
 
 _list_commits() {
 	local hd="${1-$(get_branch_name)}"
-	local limit="${2-}"
+        local skip="${2-}"
+	local limit="${3-}"
 
-        git log --format='%H%x09%ci%x09%s' ${limit:+-$limit} "$hd"
+        [ $skip -eq 0 ] && skip=
+        git log --format='%H%x09%ci%x09%s' ${skip:+--skip=$skip} ${limit:+-$limit} "$hd"
 }
 
 list_commits() {
 	local hd="${1-${in_head-$(get_branch_name)}}"
 	local limit="${2-$in_limit}"
+        local skip="${3-${in_skip-0}}"
         local br="${in_branch-}"
         local url=
 
@@ -336,7 +339,7 @@ list_commits() {
                         hd="$(git ls-remote --heads "$url" | sed -n "s,[[:space:]]\+refs/heads/$br,,p")"
                         [ -n "$hd" ] || return 2
                 fi
-		_list_commits "$hd" "$limit"
+		_list_commits "$hd" "$skip" "$limit"
 	)
 }
 
