@@ -471,6 +471,8 @@ _commit_tree() {
                 git add . 1>/dev/null 2>&1
                 ret=$?
                 if [ $ret -eq 0 ]; then
+                        touch $PERMS
+                        git add -f $PERMS 1>/dev/null 2>&1
                         _dump_file_permissions >$PERMS
                         ret=$?
                 fi
