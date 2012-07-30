@@ -316,19 +316,19 @@ reset_to_branch() {
 }
 
 _list_commits() {
-	local br="${1-$(get_branch_name)}"
+	local hd="${1-$(get_branch_name)}"
 	local limit="${2-}"
 
-        git log --format='%H%x09%ci%x09%s' ${limit:+-$limit} "$br"
+        git log --format='%H%x09%ci%x09%s' ${limit:+-$limit} "$hd"
 }
 
 list_commits() {
-	local br="${1-${in_branch-$(get_branch_name)}}"
+	local hd="${1-${in_head-$(get_branch_name)}}"
 	local limit="${2-$in_limit}"
 
 	(
 		_cd_if_git /etc || return 0
-		_list_commits "$br" "$limit"
+		_list_commits "$hd" "$limit"
 	)
 }
 
