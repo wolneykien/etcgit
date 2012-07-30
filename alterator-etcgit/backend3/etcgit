@@ -594,7 +594,12 @@ on_message()
                                         fi
                                         ;;
 				/)
-					_list_modified | _format_status | write_enum
+					_list_modified | _format_status | (
+                                                IFS='	'
+                                                while read n s; do
+                                                        write_table_item 'filename' "$n" 'status' "$s"
+                                                done
+                                        )
 					;;
 			esac
 			;;
