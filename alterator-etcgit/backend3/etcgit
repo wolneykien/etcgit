@@ -122,7 +122,7 @@ list_kill_seq_for_srv() {
 	local ksrvname=
         for f in `_list_rS "$rcd"`; do
 		ksrvname="$(_get_linked_srv "$rcd/$f")"
-		_is_srv_blacklisted "$ksrvname" && continue
+		[ "$ksrvname" != "$srvname" ] && _is_srv_blacklisted "$ksrvname" && continue
                 echo "$f"
                 [ "$ksrvname" != "$srvname" ] || break
         done
