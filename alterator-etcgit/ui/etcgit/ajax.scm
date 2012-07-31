@@ -57,6 +57,24 @@
 	     (cdr (format-row row (lambda (n l) n))))
 	   (woo-list "/etcgit/start")))))
 
+(define (reload-head)
+  (catch/message
+    (lambda ()
+      (woo-write "/etcgit/head")))
+  (read-files))
+
+(define (ask-reload-head)
+  (if (form-confirm
+        (let ((srvs (start-list)))
+	  (if (not (null? srvs))
+	      (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?<br /><br /><b>The following services will be restarted:</b><br /><br /><code>~a</code>")
+		      (form-value "branch")
+		      (string-join srvs " "))
+	      (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?")
+		      (form-value "branch"))))
+	(_ "Configuration reset"))
+      (reload-head)))
+
 (define (init)
   (form-bind "fetch" "click"
     (lambda ()
@@ -71,14 +89,6 @@
 		    'showbranch (form-value "branch"))))
   (form-bind "reset-to" "click"
     (lambda ()
-      (form-confirm
-        (let ((srvs (start-list)))
-	  (if (not (null? srvs))
-	      (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?<br /><br /><b>The following services will be restarted:</b><br /><br /><code>~a</code>")
-		      (form-value "branch")
-		      (string-join srvs " "))
-	      (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?")
-		      (form-value "branch"))))
-	(_ "Configuration reset"))))
+      (ask-reload-head)))
   (read-repo)
   (read-files))
