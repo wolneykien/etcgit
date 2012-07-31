@@ -170,7 +170,7 @@ _special_services() {
 
 _get_service_names_for_files() {
 	[ -n "$*" ] || return 0
-        rpm -qfl "$@" | \
+        rpm -qfl "$@" 2>/dev/null | \
         sed -n -e '/^\/etc\/init.d\/functions$/ d' \
                -e '/^\/etc\/rc.d\/init.d\/functions$/ d' \
                -e '/^\/etc\/init.d\/[^\/]\+$/ s/^.*\///p' \
