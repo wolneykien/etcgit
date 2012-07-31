@@ -365,6 +365,7 @@ _checkout_head() {
         local ret=
 
         umask 0027
+        [ -e .gitignore ] && git add . 1>/dev/null 2>&1
 	git reset --hard "$hd" 1>/dev/null 2>&1
         ret=$?
         if [ $ret -eq 0 ] && [ -e $PERMS ]; then
