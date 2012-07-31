@@ -412,7 +412,7 @@ reload_head() {
 	done
 
 	if [ $ret -eq 0 ]; then
-	        echo "Checking out $br ($hd)" >&2
+	        echo "*** Checking out $br ($hd) ***" >&2
 		checkout_head "$hd" "$br"
 		ret=$?
 		[ $ret -eq 0 ] || write_error_message "`_ 'Unable to checkout the configuration'`"
