@@ -148,10 +148,24 @@ list_start_seq_for_srv() {
 	local ssrvname=
         for f in `_list_S "$rcd"`; do
 		ssrvname="$(_get_linked_srv "$rcd/$f")"
-		echo $killseq | grep -qw "$ssrvname" || continue
+		echo $killseq | grep -q "^\\(.*[[:space:]]\\+\\)\\?$ssrvname\\([[:space:]]\\+.*\\)\\?\$" || continue
 		_is_srv_blacklisted "$ssrvname" && continue
                 echo "$f"
         done
+}
+
+_special_services() {
+    [ -n "$*" ] || return 0
+    for f in "$@"; do
+	case "$f" in
+	    /etc/net/*)
+		echo "network"
+		;;
+	    /etc/resolv.conf)
+		echo "network"
+		;;
+	esac
+    done | uniq
 }
 
 _get_service_names_for_files() {
@@ -162,6 +176,7 @@ _get_service_names_for_files() {
                -e '/^\/etc\/init.d\/[^\/]\+$/ s/^.*\///p' \
                -e '/^\/etc\/rc.d\/init.d\/[^\/]\+$/ s/^.*\///p' | \
         uniq
+	_special_services "$@"
 }
 
 _filter_SK() {
