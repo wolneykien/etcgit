@@ -2,6 +2,34 @@
 <html wf="none">
   <head>
     <link type="text/css" rel="stylesheet" href="/design/styles/etcgit.css" />
+    <script type="text/javascript">
+      function askCommit (title, ok, cancel, id) {
+        var buttons = {};
+
+        buttons[ok] = function() {
+          $(this).dialog('destroy');
+          form_ajax (id, {
+            retcode: '#t',
+            msg: $('input[name="commit-message"]').val (),
+            branch: $('input[name="commit-new"]').val (),
+            branchName: $('input[name="commit-branch"]').val ()
+          });
+        };
+        buttons[cancel] = function() {
+          $(this).dialog('destroy');
+          form_ajax (id, { retcode: '#f' });
+        };
+        $('#commit-popup').dialog ({
+            title: title,
+            bgiframe: true,
+            modal: true,
+            closeOnEscape: true,
+            resizable: false,
+            width: 400,
+            buttons: buttons
+        });
+      }
+    </script>
   </head>
   <body>
     <form method="POST">
@@ -39,5 +67,32 @@
       </table>
       </div>
     </form>
+    <div style="display:none" id="commit-popup">
+      <table width="100%">
+        <tr>
+          <td><span translate="_">Please, briefly describe the done modifications:</span></td>
+        </tr>
+        <tr>
+          <td><input type="text" class="text" name="commit-message" style="width:100%" /></td>
+        </tr>
+      </table>
+      <table witdh="100%">
+        <tr>
+          <td colspan="2" width="100%">
+            <input type="radio" name="commit-new" value="#f" />
+            <span translate="_">Update current profile</span>
+          </td>
+        </tr>
+        <tr>
+          <td width="70%">
+            <input type="radio" name="commit-new" value="#t" />
+            <span translate="_">Create new profile, derived from current:</span>
+          </td>
+          <td width="30%">
+            <input type="text" class="text" name="commit-branch" style="width:100%" />
+          </td>
+        </tr>
+      </table>
+    </div>
   </body>
 </html>

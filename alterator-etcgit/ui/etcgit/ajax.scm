@@ -90,5 +90,21 @@
   (form-bind "reset-to" "click"
     (lambda ()
       (ask-reload-head)))
+  (form-bind "update" "click"
+    (lambda ()
+      (form-update-value "commit-new" #f)
+      (let* ((res (js-result 'askCommit (_ "Commit changes") (_ "OK") (_ "Cancel")))
+             (retcode (assoc 'retcode res))
+             (msg (assoc 'msg res)))
+        (if (and retcode (cdr retcode))
+            (form-warning "Result: ~s" res)))))
+  (form-bind "new" "click"
+    (lambda ()
+      (form-update-value "commit-new" #t)
+      (let* ((res (js-result 'askCommit (_ "Commit changes") (_ "OK") (_ "Cancel")))
+             (retcode (assoc 'retcode res))
+             (msg (assoc 'msg res)))
+        (if (and retcode (cdr retcode))
+            (form-warning "Result: ~s" res)))))
   (read-repo)
   (read-files))
