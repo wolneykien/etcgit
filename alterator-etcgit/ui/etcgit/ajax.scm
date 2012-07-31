@@ -16,28 +16,16 @@
 
 (define (format-row row proc)
   (if (plist? row)
-    (let* ((ns-vs (plist-fold
-	            (lambda (n v ns-vs)
-	              (cons
-	                (append (car ns-vs) (list n))
-	                (append (cdr ns-vs) (list v))))
-		    (cons '() '())
-		    row))
-           (res (apply proc (cdr ns-vs)))
-	   (ns (car ns-vs))
-	   (vs (list-head res (length ns)))
-	   (aux (list-tail res (length vs))))
-      (append
-        (fold (lambda (n v rlist)
-	        (append rlist (list n v)))
-	      '()
-	      ns
-	      vs)
-	aux))
-    (cons (car row) (format-row (cdr row) proc))))
+      (apply proc
+	     (plist-fold
+	       (lambda (n v vs)
+		 (append vs (list v)))
+	       '()
+	       row))
+      (cons (car row) (format-row (cdr row) proc))))
 
 (define (format-file filename status)
-  (list filename status 'class status))
+  (list 'filename filename 'status status 'class status))
 
 (define (read-files)
   (catch/message
@@ -62,6 +50,13 @@
 		 'branch (form-value "branch"))
       (read-files))))
 
+(define (start-list)
+  (catch/message
+    (lambda ()
+      (map (lambda (row)
+	     (cdr (format-row row (lambda (n l) n))))
+	   (woo-list "/etcgit/start")))))
+
 (define (init)
   (form-bind "fetch" "click"
     (lambda ()
@@ -74,5 +69,16 @@
     (lambda ()
       (form-replace "/etcgit/log"
 		    'showbranch (form-value "branch"))))
+  (form-bind "reset-to" "click"
+    (lambda ()
+      (form-confirm
+        (let ((srvs (start-list)))
+	  (if (not (null? srvs))
+	      (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?<br /><br /><b>The following services will be restarted:</b><br /><br /><code>~a</code>")
+		      (form-value "branch")
+		      (string-join srvs " "))
+	      (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?")
+		      (form-value "branch"))))
+	(_ "Configuration reset"))))
   (read-repo)
   (read-files))
