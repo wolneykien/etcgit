@@ -412,6 +412,8 @@ reload_head() {
 
 	if [ $ret -eq 0 ]; then
 		checkout_head "$hd" "$br"
+		ret=$?
+		[ $ret -eq 0 ] || write_error_message "`_ 'Unable to checkout the configuration'`"
 	fi
 
 	for s in $startseq; do
