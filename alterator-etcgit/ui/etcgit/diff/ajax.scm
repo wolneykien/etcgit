@@ -9,7 +9,7 @@
       (form-update-value-list '("diff")
 			      (woo-read-first "/etcgit/diff"
 					      'file (form-value "file")))
-      (response-append "sh_highlightDocument();~%"))))
+      (js 'sh_highlightDocument))))
 
 (define (init)
   (form-update-value "filename" (form-value "file"))
