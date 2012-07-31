@@ -6,6 +6,9 @@
   :use-module (alterator woo)
   :export (init))
 
+(define *limit* 25)
+(define *skip* 0)
+
 (define (format-row row proc)
   (if (plist? row)
     (let* ((ns-vs (plist-fold
@@ -40,12 +43,24 @@
 (define (read-log)
   (catch/message
     (lambda ()
-      (form-update-enum "log"
-			(map (lambda (row)
-			       (format-row row format-commit))
-			     (woo-list "/etcgit/commits" 'head (form-value "branch")
-							 'limit 100
-							 'branch (form-value "branch")))))))
+      (let* ((branch (form-value "branch"))
+	     (log (woo-list "/etcgit/commits" 'head branch
+			                      'limit (+ *limit* 1)
+					      'skip *skip*
+					      'branch branch)))
+	(if (> (length log) *limit*)
+	    (begin
+	      (form-update-enum "log"
+				(map (lambda (row)
+				       (format-row row format-commit))
+				     (list-head log *limit*)))
+	      #t)
+	    (begin
+	      (form-update-enum "log"
+				(map (lambda (row)
+				       (format-row row format-commit))
+				     log))
+	      #f))))))
 
 (define (read-repo)
   (catch/message
@@ -57,10 +72,27 @@
 			  (woo-list "/etcgit/branches" 'url (woo-get-option data 'url)))
 	(form-update-value "branch" branch)))))
 
-(define (init)
-  (form-bind "branch" "change"
-    (lambda ()
-      (form-update-value "branch" (car (string-split (form-value "branch") #\;)))
-      (read-log)))
+(define (init-log)
   (read-repo)
-  (read-log))
+  (set! *skip* 0)
+  (form-update-visibility "prev" #f)
+  (form-update-visibility "next" (read-log)))
+
+(define (init)
+  (form-update-value "branch" (form-value "showbranch"))
+  (form-bind "branch" "change" init-log)
+  (form-bind "prev" "click"
+    (lambda ()
+      (if (> *skip* 0)
+	  (set! *skip*
+		(if (> *skip* *limit*)
+		    (- *skip* *limit*)
+		    0)))
+      (form-update-visibility "prev" (> *skip* 0))
+      (form-update-visibility "next" (read-log))))
+  (form-bind "next" "click"
+    (lambda ()
+      (set! *skip* (+ *skip* *limit*))
+      (form-update-visibility "prev" #t)
+      (form-update-visibility "next" (read-log))))
+  (init-log))

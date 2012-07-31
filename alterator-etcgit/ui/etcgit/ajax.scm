@@ -73,6 +73,6 @@
   (form-bind "history" "click"
     (lambda ()
       (form-replace "/etcgit/log"
-		    'branch (form-value "branch"))))
+		    'showbranch (form-value "branch"))))
   (read-repo)
   (read-files))
