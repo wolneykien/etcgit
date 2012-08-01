@@ -29,6 +29,10 @@
             buttons: buttons
         });
       }
+
+      function commitNewChanged () {
+        form_update_activity ('commit-branch', $('input:radio[name=commit-new]:checked').val () == "#t");
+      }
     </script>
   </head>
   <body>
@@ -79,13 +83,13 @@
       <table witdh="100%">
         <tr>
           <td colspan="2" width="100%">
-            <input type="radio" name="commit-new" value="#f" />
+            <input type="radio" name="commit-new" value="#f" onchange="javascript: { commitNewChanged (); }" />
             <span translate="_">Update current profile</span>
           </td>
         </tr>
         <tr>
           <td width="70%">
-            <input type="radio" name="commit-new" value="#t" />
+            <input type="radio" name="commit-new" value="#t" onchange="javascript: { commitNewChanged (); }" />
             <span translate="_">Create new profile, derived from current:</span>
           </td>
           <td width="30%">

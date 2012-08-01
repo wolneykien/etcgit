@@ -93,6 +93,9 @@
   (form-bind "update" "click"
     (lambda ()
       (form-update-value "commit-new" #f)
+      (form-update-value "commit-message" "")
+      (form-update-value "commit-branch" "")
+      (form-update-activity "commit-branch" #f)
       (let* ((res (js-result 'askCommit (_ "Commit changes") (_ "OK") (_ "Cancel")))
              (retcode (assoc 'retcode res))
              (msg (assoc 'msg res)))
@@ -101,6 +104,9 @@
   (form-bind "new" "click"
     (lambda ()
       (form-update-value "commit-new" #t)
+      (form-update-value "commit-message" "")
+      (form-update-value "commit-branch" "")
+      (form-update-activity "commit-branch" #t)
       (let* ((res (js-result 'askCommit (_ "Commit changes") (_ "OK") (_ "Cancel")))
              (retcode (assoc 'retcode res))
              (msg (assoc 'msg res)))
