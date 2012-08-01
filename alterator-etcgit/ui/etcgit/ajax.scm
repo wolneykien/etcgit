@@ -58,6 +58,14 @@
 	   (woo-list "/etcgit/start")))))
 
 (define (reload-head)
+  (let ((srvs (start-list)))
+    (if (member "ahttpd" srvs)
+      (begin
+        (form-warning (_ "The System management center service will be restarted. The current session will be closed now."))
+        (form-replace "/etcgit/restart"))
+      (do-reload))))
+
+(define (do-reload)
   (catch/message
     (lambda ()
       (woo-write "/etcgit/head")))
