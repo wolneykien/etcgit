@@ -10,19 +10,19 @@
     (lambda ()
       (let ((data (woo-read-first "/etcgit")))
         (form-update-value "url" (woo-get-option data 'url))
-	(form-update-enum "branch"
-			  (woo-list "/etcgit/branches" 'url (woo-get-option data 'url)))
-	(form-update-value "branch" (woo-get-option data 'branch))))))
+        (form-update-enum "branch"
+                          (woo-list "/etcgit/branches" 'url (woo-get-option data 'url)))
+        (form-update-value "branch" (woo-get-option data 'branch))))))
 
 (define (format-row row proc)
   (if (plist? row)
-      (apply proc
-	     (plist-fold
-	       (lambda (n v vs)
-		 (append vs (list v)))
-	       '()
-	       row))
-      (cons (car row) (format-row (cdr row) proc))))
+    (apply proc
+           (plist-fold
+             (lambda (n v vs)
+               (append vs (list v)))
+             '()
+             row))
+    (cons (car row) (format-row (cdr row) proc))))
 
 (define (format-file filename status)
   (list 'filename filename 'status status 'class status))
@@ -31,31 +31,30 @@
   (catch/message
     (lambda ()
       (form-update-enum "files"
-			(map (lambda (row)
-			       (format-row row format-file))
-			     (woo-list "/etcgit"))))))
+                        (map (lambda (row)
+                               (format-row row format-file))
+                             (woo-list "/etcgit"))))))
 
 (define (fetch-repo)
   (catch/message
     (lambda ()
-      (woo-write "/etcgit"
-		 'url (form-value "url"))
-      (read-repo)
-      (read-files))))
+      (woo-write "/etcgit" 'url (form-value "url"))))
+    (read-repo)
+    (read-files))
 
 (define (reset-to)
   (catch/message
     (lambda ()
-      (woo-write "/etcgit"
-		 'branch (form-value "branch"))
-      (read-files))))
+      (woo-write "/etcgit" 'branch (form-value "branch"))))
+    (read-repo)
+    (read-files))
 
 (define (start-list)
   (catch/message
     (lambda ()
       (map (lambda (row)
-	     (cdr (format-row row (lambda (n l) n))))
-	   (woo-list "/etcgit/start")))))
+             (cdr (format-row row (lambda (n l) n))))
+           (woo-list "/etcgit/start")))))
 
 (define (reload-head)
   (let ((srvs (start-list)))
@@ -69,6 +68,7 @@
   (catch/message
     (lambda ()
       (woo-write "/etcgit/head")))
+  (read-repo)
   (read-files))
 
 (define (ask-reload-head)
