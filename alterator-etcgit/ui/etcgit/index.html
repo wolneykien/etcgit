@@ -10,9 +10,9 @@
           $(this).dialog('destroy');
           form_ajax (id, {
             retcode: '#t',
-            msg: $('input[name="commit-message"]').val (),
-            branch: $('input[name="commit-new"]').val (),
-            branchName: $('input[name="commit-branch"]').val ()
+            msg: $('input:text[name=commit-message]').val (),
+            branch: $('input:radio[name=commit-new]:checked').val (),
+            branchName: $('input:text[name=commit-branch]').val ()
           });
         };
         buttons[cancel] = function() {
