@@ -405,6 +405,7 @@ reload_head() {
 
 	for s in $killseq; do
 		if ! service "$s" stop >&2; then
+                        printf '*** Unable to stop service: %s ***\n' "$s" >&2
 			write_error_message "`_ 'Unable to stop service: %s'`" "$s"
 			ret=1
 			break
@@ -415,11 +416,15 @@ reload_head() {
 	        echo "*** Checking out $br ($hd) ***" >&2
 		checkout_head "$hd" "$br"
 		ret=$?
-		[ $ret -eq 0 ] || write_error_message "`_ 'Unable to checkout the configuration'`"
+		if [ $ret -ne 0 ]; then
+                        printf '*** Unable to checkout the configuration ***\n' >&2
+                        write_error_message "`_ 'Unable to checkout the configuration'`"
+                fi
 	fi
 
 	for s in $startseq; do
 		if ! service "$s" start >&2; then
+                        printf '*** Unable to start service: %s ***\n' "$s" >&2
 			[ $ret -eq 0 ] && write_error_message "`_ 'Unable to start service: %s'`" "$s"
 			ret=1
 		fi
