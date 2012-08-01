@@ -101,8 +101,29 @@ _list_rS() {
 	sort -r
 }
 
+_in_list() {
+        local key="$1"; shift
+        [ $# -gt 0 ] || return 1
+
+        for k in "$@"; do
+                [ "$k" != "$key" ] || return 0
+        done
+
+        return 1
+}
+
 _srv_is_independent() {
-	case "$1" in
+        local srv="$1"; shift
+
+        if _in_list 'network' "$@"; then
+                case "$srv" in
+                        ahttpd)
+                                return 1
+                                ;;
+                esac
+        fi
+
+	case "$srv" in
 		ahttpd|alteratord|plymouth|local|irqbalance|mdadm|random|udevd|udevd-final|fbsetfont|consolesaver|keytable|gpm)
 			return 0
 			;;
@@ -118,11 +139,13 @@ list_kill_seq_for_srv() {
         [ -n "$runlevel" ] || runlevel=3
         local rcd="/etc/rc.d/rc$runlevel.d"
         [ -d "$rcd" ] || return 2
+        local klist="$(_list_rS "$rcd")"
+        local ksrvlist="$(for f in $klist; do _get_linked_srv "$rcd/$f"; done)"
 
 	local ksrvname=
-        for f in `_list_rS "$rcd"`; do
+        for f in $klist; do
 		ksrvname="$(_get_linked_srv "$rcd/$f")"
-		[ "$ksrvname" != "$srvname" ] && _srv_is_independent "$ksrvname" && continue
+		[ "$ksrvname" != "$srvname" ] && _srv_is_independent "$ksrvname" $ksrvlist && continue
                 echo "$f"
                 [ "$ksrvname" != "$srvname" ] || break
         done
@@ -148,8 +171,7 @@ list_start_seq_for_srv() {
 	local ssrvname=
         for f in `_list_S "$rcd"`; do
 		ssrvname="$(_get_linked_srv "$rcd/$f")"
-		echo $killseq | grep -q "^\\(.*[[:space:]]\\+\\)\\?$ssrvname\\([[:space:]]\\+.*\\)\\?\$" || continue
-		[ "$ssrvname" != "$srvname" ] && _srv_is_independent "$ssrvname" && continue
+                _in_list "$ssrvname" $killseq || continue
                 echo "$f"
         done
 }
