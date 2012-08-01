@@ -80,22 +80,24 @@
   (form-update-value "commit-message" "")
   (form-update-value "commit-branch" "")
   (let* ((res (js-result 'askCommit (_ "Commit changes") (_ "OK") (_ "Cancel")))
-         (retcode (and (assoc 'retcode res) (car (assoc 'retcode res))))
-         (msg (and (assoc 'msg res) (car (assoc 'msg res))))
-         (branch (and (assoc 'branch res) (car (assoc 'branch res)) (assoc 'branchName res) (car (assoc 'branchName res)))))
+         (retcode (and (assoc 'retcode res) (cdr (assoc 'retcode res))))
+         (msg (and (assoc 'msg res) (cdr (assoc 'msg res))))
+         (branch (and (assoc 'branch res) (cdr (assoc 'branch res)) (assoc 'branchName res) (cdr (assoc 'branchName res)))))
     (and retcode (list msg branch))))
 
 (define (commit msg branch)
-  (if (not msg)
+  (if (or (not msg) (string-null? msg))
     (form-error (_ "Please, specify a comment for the commit"))
-    (begin
-      (catch/message
-        (lambda ()
-          (if branch
-              (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch branch)
-              (woo-write "/etcgit/head" 'commit #t 'msg msg))))
-      (read-repo)
-      (read-files))))
+    (if (and branch (string-null? branch))
+      (form-error (_ "Profile name should not be empty"))
+      (begin
+        (catch/message
+          (lambda ()
+            (if branch
+                (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch branch)
+                (woo-write "/etcgit/head" 'commit #t 'msg msg))))
+        (read-repo)
+        (read-files)))))
 
 (define (init)
   (form-bind "fetch" "click"
