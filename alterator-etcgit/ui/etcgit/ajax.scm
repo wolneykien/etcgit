@@ -64,16 +64,38 @@
   (read-files))
 
 (define (ask-reload-head)
-  (if (form-confirm
-        (let ((srvs (start-list)))
-	  (if (not (null? srvs))
-	      (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?<br /><br /><b>The following services will be restarted:</b><br /><br /><code>~a</code>")
-		      (form-value "branch")
-		      (string-join srvs " "))
-	      (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?")
-		      (form-value "branch"))))
-	(_ "Configuration reset"))
-      (reload-head)))
+  (form-confirm
+    (let ((srvs (start-list)))
+      (if (not (null? srvs))
+        (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?<br /><br /><b>The following services will be restarted:</b><br /><br /><code>~a</code>")
+                (form-value "branch")
+                (string-join srvs " "))
+        (format #f (_ "Are you sure you want to reset the state of the configuration files to that of the <code><b>~a</b></code> profile?")
+                (form-value "branch"))))
+    (_ "Configuration reset")))
+
+(define (ask-commit new)
+  (form-update-value "commit-new" new)
+  (form-update-activity "commit-branch" new)
+  (form-update-value "commit-message" "")
+  (form-update-value "commit-branch" "")
+  (let* ((res (js-result 'askCommit (_ "Commit changes") (_ "OK") (_ "Cancel")))
+         (retcode (and (assoc 'retcode res) (car (assoc 'retcode res))))
+         (msg (and (assoc 'msg res) (car (assoc 'msg res))))
+         (branch (and (assoc 'branch res) (car (assoc 'branch res)) (assoc 'branchName res) (car (assoc 'branchName res)))))
+    (and retcode (list msg branch))))
+
+(define (commit msg branch)
+  (if (not msg)
+    (form-error (_ "Please, specify a comment for the commit"))
+    (begin
+      (catch/message
+        (lambda ()
+          (if branch
+              (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch branch)
+              (woo-write "/etcgit/head" 'commit #t 'msg msg))))
+      (read-repo)
+      (read-files))))
 
 (define (init)
   (form-bind "fetch" "click"
@@ -89,28 +111,17 @@
 		    'showbranch (form-value "branch"))))
   (form-bind "reset-to" "click"
     (lambda ()
-      (ask-reload-head)))
+      (if (ask-reload-head)
+          (reload-head))))
   (form-bind "update" "click"
     (lambda ()
-      (form-update-value "commit-new" #f)
-      (form-update-value "commit-message" "")
-      (form-update-value "commit-branch" "")
-      (form-update-activity "commit-branch" #f)
-      (let* ((res (js-result 'askCommit (_ "Commit changes") (_ "OK") (_ "Cancel")))
-             (retcode (assoc 'retcode res))
-             (msg (assoc 'msg res)))
-        (if (and retcode (cdr retcode))
-            (form-warning "Result: ~s" res)))))
+      (let ((ret (ask-commit #f)))
+        (if ret
+            (apply commit ret)))))
   (form-bind "new" "click"
     (lambda ()
-      (form-update-value "commit-new" #t)
-      (form-update-value "commit-message" "")
-      (form-update-value "commit-branch" "")
-      (form-update-activity "commit-branch" #t)
-      (let* ((res (js-result 'askCommit (_ "Commit changes") (_ "OK") (_ "Cancel")))
-             (retcode (assoc 'retcode res))
-             (msg (assoc 'msg res)))
-        (if (and retcode (cdr retcode))
-            (form-warning "Result: ~s" res)))))
+      (let ((ret (ask-commit #t)))
+        (if ret
+            (apply commit ret)))))
   (read-repo)
   (read-files))
