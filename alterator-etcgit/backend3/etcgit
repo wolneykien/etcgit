@@ -505,36 +505,34 @@ _commit_tree() {
 
         git branch -M "$(_get_branch_name)" "$br" 1>/dev/null 2>&1
         ret=$?
-        [ $ret -eq 0 ] || return $ret
+        [ $ret -eq 0 ] || return 1
 
         if [ -e .gitignore ]; then
-                git add . 1>/dev/null 2>&1
-                ret=$?
+                git add . 1>/dev/null 2>&1 || ret=3
                 if [ $ret -eq 0 ]; then
                         touch $PERMS
-                        git add -f $PERMS 1>/dev/null 2>&1
-                        _dump_file_permissions >$PERMS
-                        ret=$?
+                        git add -f $PERMS 1>/dev/null 2>&1 || ret=3
+                        if [ $ret -eq 0 ]; then
+                                _dump_file_permissions >$PERMS || ret=4
+                        fi
                 fi
                 if [ $ret -eq 0 ]; then
-                        git add -f $PERMS 1>/dev/null 2>&1
-                        ret=$?
+                        git add -f $PERMS 1>/dev/null 2>&1 || ret=3
                 fi
                 if [ $ret -eq 0 ]; then
-                        git commit -a -m "$msg" 1>/dev/null 2>&1
-                        ret=$?
+                        git commit -a -m "$msg" 1>/dev/null 2>&1 || ret=5
                 fi
                 if [ $ret -eq 0 ]; then
-                        _push_branch "$url"
-                        ret=$?
+                        _push_branch "$url" || ret=6
                         [ $ret -eq 0 ] || git reset HEAD^ 1>/dev/null 2>&1
                 fi
                 if [ $ret -eq 0 ]; then
-                        _reset_to_branch "$url" "$br"
-                        ret=$?
+                        _reset_to_branch "$url" "$br" || ret=7
                 else
                         git reset . 1>/dev/null 2>&1
                 fi
+        else
+                ret=2
         fi
 
         return $ret
@@ -544,6 +542,7 @@ commit_tree() {
         local msg="${1-$in_msg}"
         local url="${2-${in_url-$(get_branch_remote_url)}}"
         local br="${3-${in_branch-$(get_branch_name)}}"
+        local ret=
 
         if [ -z "$url" ]; then
                 write_error_message "`_ 'Please, set the repo URL first'`"
@@ -553,6 +552,32 @@ commit_tree() {
         (
 	        _cd_if_git /etc || return 0
                 _commit_tree "$msg" "$url" "$br"
+                ret=$?
+                case $ret in
+                        1)
+                                write_error_message "`_ 'Unable to make profile %s'`" "$br"
+                                ;;
+                        2)
+                                write_error_message "`_ 'Unable to add files to the commit: the .gitignore file doesn'\''t exist'`"
+                                ;;
+                        3)
+                                write_error_message "`_ 'Unable to add files to the commit'`"
+                                ;;
+                        4)
+                                write_error_message "`_ 'Unable to add metadata to the commit'`"
+                                ;;
+                        5)
+                                write_error_message "`_ 'Unable to commit changes locally'`"
+                                ;;
+                        6)
+                                write_error_message "`_ 'Unable to commit changes to the repository %s'`" "$url"
+                                ;;
+                        7)
+                                write_error_message "`_ 'Unable to sync the local repository'`"
+                                ;;
+                esac
+
+                [ $ret -eq 0 ]
         )
 }
 
