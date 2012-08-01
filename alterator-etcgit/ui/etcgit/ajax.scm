@@ -78,7 +78,10 @@
   (form-update-value "commit-new" new)
   (form-update-activity "commit-branch" new)
   (form-update-value "commit-message" "")
-  (form-update-value "commit-branch" "")
+  (form-update-value "commit-branch"
+                     (if new
+                       (string-append (form-value "branch") "1")
+                       ""))
   (let* ((res (js-result 'askCommit (_ "Commit changes") (_ "OK") (_ "Cancel")))
          (retcode (and (assoc 'retcode res) (cdr (assoc 'retcode res))))
          (msg (and (assoc 'msg res) (cdr (assoc 'msg res))))
