@@ -1,14 +1,17 @@
 #!/bin/sh
 
-PERMS=.git-file-permissions
+LOCALDIR=.etcgit
+PERMS=$LOCALDIR/file-permissions
 
 _cd_init() {
 	cd "$1"
 	[ -d .git ] || git init 1>/dev/null 2>&1
+        [ -d $LOCALDIR ] || mkdir $LOCALDIR
 }
 
 _cd_if_git() {
 	[ -d "${1%/}/.git" ] && cd "$1"
+        [ -d $LOCALDIR ] || mkdir $LOCALDIR
 }
 
 _get_branch_name() {
