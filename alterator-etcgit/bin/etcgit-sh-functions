@@ -2,6 +2,7 @@
 
 LOCALDIR=.etcgit
 PERMS=$LOCALDIR/file-permissions
+FILTERSDIR=$LOCALDIR/filters
 
 _cd_init() {
 	cd "$1"
@@ -325,6 +326,15 @@ _reset_to_branch() {
 		return 1
 	fi
 	git config "branch.$br.remote" "$url"
+        _setup_filters
+}
+
+_setup_filters() {
+        [ -d $FILTERSDIR ] || return 0
+
+        git ls-files $FILTERSDIR | while read f; do
+                git config "filter.${f#$FILTERSDIR/}" "$f %f"
+        done
 }
 
 change_url() {
