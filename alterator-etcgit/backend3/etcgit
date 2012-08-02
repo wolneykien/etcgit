@@ -621,6 +621,11 @@ on_message()
 				/)
 					write_string_param 'branch' "$(get_branch_name)"
 					write_string_param 'url' "$(get_branch_remote_url)"
+                                        if [ -n "$(_list_modified)" ]; then
+                                                write_bool_param 'modified' 'yes'
+                                        else
+                                                write_bool_param 'modified' 'no'
+                                        fi
 					;;
 				head)
                                         (
