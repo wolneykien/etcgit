@@ -12,7 +12,8 @@
         (form-update-value "url" (woo-get-option data 'url))
         (form-update-enum "branch"
                           (woo-list "/etcgit/branches" 'url (woo-get-option data 'url)))
-        (form-update-value "branch" (woo-get-option data 'branch))))))
+        (form-update-value "branch" (woo-get-option data 'branch))
+        (form-update-value "profile-name" (woo-get-option data 'branch))))))
 
 (define (format-row row proc)
   (if (plist? row)
