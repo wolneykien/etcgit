@@ -134,7 +134,7 @@ list_kill_seq_for_srv() {
         local rcd="/etc/rc.d/rc$runlevel.d"
         [ -d "$rcd" ] || return 2
         local klist="$(_list_rS "$rcd")"
-        local ksrvlist="$(for f in $klist; do _get_linked_srv "$rcd/$f"; done)"
+        local ksrvlist="$(for f in $klist; do ksrv="$(_get_linked_srv "$rcd/$f")"; echo "$ksrv"; [ "$ksrv" != "$srvname" ] || break; done)"
 
 	local ksrvname=
         for f in $klist; do
