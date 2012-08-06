@@ -33,8 +33,9 @@ using git.
 
 %files
 %_alterator_datadir/applications/*
-#%_alterator_datadir/ui/etcgit
+%_alterator_datadir/ui/etcgit
 %_alterator_backend3dir/etcgit
+%_alterator_datadir/design
 
 %changelog
 * Fri Jul 20 2012 Paul Wolneykien <manowar@altlinux.ru> 1.0-alt1
