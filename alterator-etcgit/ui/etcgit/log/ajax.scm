@@ -65,22 +65,22 @@
 (define (read-repo)
   (catch/message
     (lambda ()
-      (let ((data (woo-read-first "/etcgit"))
-            (branch (form-value "branch")))
+      (let ((data (woo-read-first "/etcgit")))
         (form-update-value "url" (woo-get-option data 'url))
-	(form-update-enum "branch"
-			  (woo-list "/etcgit/branches" 'url (woo-get-option data 'url)))
-	(form-update-value "branch" branch)))))
+        (form-update-enum "branch"
+                          (woo-list "/etcgit/branches" 'url (woo-get-option data 'url)))))))
 
-(define (init-log)
+(define (init-log branch)
   (read-repo)
+  (form-update-value "branch" branch)
   (set! *skip* 0)
   (form-update-visibility "prev" #f)
   (form-update-visibility "next" (read-log)))
 
 (define (init)
-  (form-update-value "branch" (form-value "showbranch"))
-  (form-bind "branch" "change" init-log)
+  (form-bind "branch" "change"
+    (lambda ()
+      (init-log (form-value "branch"))))
   (form-bind "prev" "click"
     (lambda ()
       (if (> *skip* 0)
@@ -95,4 +95,4 @@
       (set! *skip* (+ *skip* *limit*))
       (form-update-visibility "prev" #t)
       (form-update-visibility "next" (read-log))))
-  (init-log))
+  (init-log (form-value "showbranch")))
