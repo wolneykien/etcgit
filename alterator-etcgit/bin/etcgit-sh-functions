@@ -615,6 +615,14 @@ commit_tree() {
         )
 }
 
+_() {
+        echo "$1"
+}
+
+write_error() {
+        echo "$1" >&2
+}
+
 write_error_message() {
 	local msg="$(printf "$@")"
 	write_error "$msg"

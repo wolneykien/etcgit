@@ -3,8 +3,8 @@
 alterator_api_version=1
 po_domain="alterator-etcgit"
 
-. alterator-sh-functions
 . etcgit-sh-functions
+. alterator-sh-functions
 
 on_message()
 {
