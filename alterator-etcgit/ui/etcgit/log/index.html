@@ -18,11 +18,15 @@
 	<a href="#" name="prev">←<span translate="_">prev</span></a>
 	<a href="#" name="next"><span translate="_">next</span>→</a>
       </div>
+      <p>
+      <span class="A"><b>A</b></span> — <span translate="_">new</span>, <span class="D"><b>D</b></span> — <span translate="_">deleted</span>
+      </p>
       <table name="log" class="alterator-listbox" width="100%">
         <thead class="frame-table">
           <tr>
             <th><span translate="_">Date/Time</span></th>
             <th><span translate="_">Comment</span></th>
+            <th></th>
             <th><span translate="_">Hashcode</span></th>
           </tr>
         </thead>
@@ -30,6 +34,7 @@
           <tr alterator-class="class">
             <td nowrap="nowrap"><span class="alterator-label" name="timestamp" /></td>
             <td width="75%"><span class="alterator-label" name="msg" /></td>
+            <td width="0%" align="center"><b><span class="alterator-label" name="status" /></b></td>
             <td nowrap="nowrap"><code><span class="alterator-label" name="head" /></code></td>
           </tr>
         </tbody>

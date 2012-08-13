@@ -38,6 +38,7 @@ else
                         fi
                         ;;
                 log)
+                        [ -n "${1-}" ] && in_branch="$1"
                         list_commits
                         ;;
                 services)

@@ -59,8 +59,8 @@ on_message()
 				commits)
 					list_commits | (
                                                 IFS='	'
-                                                while read h t m; do
-                                                        write_table_item 'head' "$h" 'timestamp' "$t" 'msg' "$m"
+                                                while read h t m s; do
+                                                        write_table_item 'head' "$h" 'timestamp' "$t" 'msg' "$m" 'status' "$s"
                                                 done
                                         )
 					;;
