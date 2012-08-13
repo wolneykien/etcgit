@@ -36,6 +36,8 @@ using git.
 %_alterator_datadir/ui/etcgit
 %_alterator_backend3dir/etcgit
 %_alterator_datadir/design
+%_bindir/*
+%_sbindir/*
 
 %changelog
 * Fri Jul 20 2012 Paul Wolneykien <manowar@altlinux.ru> 1.0-alt1
