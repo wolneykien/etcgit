@@ -12,7 +12,7 @@ Summary: Alterator module to control versions of configuration files in /etc usi
 License: GPL
 Group: System/Configuration/Other
 Requires: alterator >= 4.8-alt1
-Requires: alterator-fbi >= 5.11-alt2
+Requires: alterator-fbi >= 5.27-alt1
 Conflicts: alterator >= 5.0
 Conflicts: alterator-fbi >= 6.0
 
