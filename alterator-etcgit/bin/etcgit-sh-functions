@@ -548,9 +548,10 @@ _commit_tree() {
         local msg="${1-$(_get_default_message)}"
         local url="${2-$(_get_branch_remote_url)}"
         local br="${3-$(_get_branch_name)}"
+        local oldbr="$(_get_branch_name)"
         local ret=
 
-        git branch -M "$(_get_branch_name)" "$br" 1>/dev/null 2>&1
+        git branch -M "$oldbr" "$br" 1>/dev/null 2>&1
         ret=$?
         [ $ret -eq 0 ] || return 1
 
@@ -576,6 +577,7 @@ _commit_tree() {
                 if [ $ret -eq 0 ]; then
                         _reset_to_branch "$url" "$br" || ret=7
                 else
+                        git branch -M "$br" "$oldbr" 1>/dev/null 2>&1
                         git reset . 1>/dev/null 2>&1
                 fi
         else
