@@ -423,7 +423,7 @@ checkout_head() {
 reload_head() {
 	local hd="${1-${in_commit-}}"
 	local br="$(get_branch_name)"
-	[ -n "$hd" ] || hd="$br"
+        [ -n "$hd" ] || hd="$(_get_head_for_branch "$(get_branch_remote_url)" "$br")"
 
 	reset_to_head "$hd" "$br" || return $?
 
