@@ -62,13 +62,26 @@ _apply_file_permissions() {
         eval "$(sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
 }
 
+_get_remote_or_local_head() {
+        local url="${1-$(get_branch_remote_url)}"
+        local hd=
+
+        if [ -n "$url" ]; then
+                hd="$(_get_head_for_branch "$url")"
+        fi
+
+        [ -n "$hd" ] || hd='HEAD'
+
+        echo "$hd"
+}
+
 _list_modified() {
 	(
 		_cd_if_git /etc || return 0
                 [ -e .gitignore ] && git add . 1>/dev/null 2>&1
                 _dump_file_permissions >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-		git status -s -uno
+                git diff --name-status "$(_get_remote_or_local_head)"
                 git reset . 1>/dev/null 2>&1
 	)
 }
@@ -499,12 +512,12 @@ _get_diff() {
 
 	if [ -n "$file" ]; then
                 git add -f "$file" 1>/dev/null 2>&1
-		git diff HEAD -- "$file"
+                git diff "$(_get_remote_or_local_head)" -- "$file"
                 git reset "$file" 1>/dev/null 2>&1
 	else
                 _dump_file_permissions >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-		git diff HEAD
+                git diff "$(_get_remote_or_local_head)"
                 git reset . 1>/dev/null 2>&1
 	fi
 }
