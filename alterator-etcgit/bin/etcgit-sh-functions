@@ -380,7 +380,7 @@ list_commits() {
                 if [ -n "$br" ]; then
                         url="${in_url-$(get_branch_remote_url)}"
                         git fetch "$url" "$br" 1>/dev/null 2>&1 || return 1
-                        hd="$(git ls-remote --heads "$url" | sed -n "s,[[:space:]]\+refs/heads/$br,,p")"
+                        hd="$(_get_head_for_branch "$url" "$br")"
                         [ -n "$hd" ] || return 2
                 fi
 		_list_commits "$hd" "$skip" "$limit"
