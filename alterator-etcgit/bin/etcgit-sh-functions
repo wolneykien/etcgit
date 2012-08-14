@@ -376,12 +376,9 @@ _list_commits() {
 	local hd="${1-$(get_branch_name)}"
         local skip="${2-}"
 	local limit="${3-}"
-        local status="${4-}"
-        local format="%H%x09%ci%x09%s"
 
         [ $skip -eq 0 ] && skip=
-        [ -z "$status" ] || format="$format%x09$status"
-        git log --format="$format" ${skip:+--skip=$skip} ${limit:+-$limit} "$hd"
+        git log --format='%H%x09%ci%x09%s' ${skip:+--skip=$skip} ${limit:+-$limit} "$hd"
 }
 
 list_commits() {
@@ -396,24 +393,10 @@ list_commits() {
                 if [ -n "$br" ]; then
                         url="${in_url-$(get_branch_remote_url)}"
                         git fetch "$url" "$br" 1>/dev/null 2>&1 || return 1
-                        hd0="$(_get_head_for_branch "$url" "$br")"
-                        if [ "$br" != "$(_get_branch_name)" ]; then
-                                hd="$hd0"
-                        fi
+                        hd="$(_get_head_for_branch "$url" "$br")"
                         [ -n "$hd" ] || return 2
                 fi
-                if [ -n "${hd0:-}" ] && [ "$hd" != "$hd0" ]; then
-                        dl=$(git log --oneline "$hd0..$hd" 2>/dev/null | wc -l)
-                        if [ $dl -gt 0 ]; then
-                                _list_commits "$hd0..$hd" "$skip" "$limit" 'A'
-                                skip=$(($skip + $dl))
-                        else
-                                dl=$(git log --oneline "$hd..$hd0" 2>/dev/null | wc -l)
-                                _list_commits "$hd..$hd0" "$skip" "$limit" 'D'
-                                skip=$(($skip + $dl))
-                        fi
-                fi
-                _list_commits "$hd" "$skip" "$limit"
+		_list_commits "$hd" "$skip" "$limit"
 	)
 }
 

@@ -31,16 +31,14 @@
         aux))
     (cons (car row) (format-row (cdr row) proc))))
 
-(define (format-commit head timestamp msg status)
+(define (format-commit head timestamp msg)
   (list head
         (date->string
           (time-utc->date
             (date->time-utc
               (string->date timestamp "~Y-~m-~d ~H:~M:~S ~z")))
           "~d.~m.~Y ~H:~M:~S")
-        msg
-        status
-        'class status))
+        msg))
 
 (define (read-log)
   (catch/message
