@@ -11,7 +11,7 @@ _cd_init() {
 }
 
 _cd_if_git() {
-	[ -d "${1%/}/.git" ] && cd "$1"
+	[ -d "${1%/}/.git" ] && cd "$1" || return 1
         [ -d $LOCALDIR ] || mkdir $LOCALDIR
 }
 
@@ -312,11 +312,13 @@ _get_max_local_branch() {
 
 _backup_local_head() {
         local url="${1:-$(_get_branch_remote_url)}"
-        local lhd=$(git log -1 --oneline --no-abbrev-commit | sed -e 's/[[:space:]]\+.*$//')
+        local lhd=$(git log -1 --oneline --no-abbrev-commit 2>/dev/null | sed -e 's/[[:space:]]\+.*$//')
+        [ -n "$lhd" ] || return 0
         local lbr="$(_get_branch_name)"
-        local rbr=$(_get_branch_for_head "$url" "$lhd")
+        local rbr=
         local suf=
 
+        [ -n "$url" ] && rbr=$(_get_branch_for_head "$url" "$lhd")
         if [ -z "$rbr" ] && [ -n "$lbr" ]; then
                 suf="$(_get_max_local_branch)"
                 git branch "local/$lbr$suf"
@@ -328,8 +330,7 @@ _reset_to_head() {
 	local url="${1:-$(_get_branch_remote_url)}"
 	local hd="${2-}"
 	[ -n "$hd" ] || return 0
-	local br="${3:-}"
-	[ -n "$br" ] || br="$(_get_branch_for_head "$url" "$hd")"
+	local br="$(_get_branch_for_head "$url" "$hd")"
 
         _backup_local_head
 
@@ -341,11 +342,10 @@ _reset_to_head() {
 reset_to_head() {
 	local url="$(get_branch_remote_url)"
 	local hd="${1-${in_head-}}"
-	local br="${2-}"
 
 	(
 		_cd_init /etc
-		_reset_to_head "$url" "$hd" "$br"
+		_reset_to_head "$url" "$hd"
 	)
 }
 
@@ -364,7 +364,7 @@ _reset_to_branch() {
 	local hd="$(_get_head_for_branch "$url" "$br")"
 
 	if [ -n "$hd" ]; then
-		_reset_to_head "$url" "$hd" "$br" || return $?
+		_reset_to_head "$url" "$hd" || return $?
 	else
 		return 1
 	fi
@@ -474,9 +474,11 @@ checkout_head() {
 reload_head() {
 	local hd="${1-${in_commit-}}"
 	local br="$(get_branch_name)"
+        [ -n "$hd" ] || [ -n "$br" ] || return 1
         [ -n "$hd" ] || hd="$(_get_head_for_branch "$(get_branch_remote_url)" "$br")"
 
-	reset_to_head "$hd" "$br" || return $?
+	reset_to_head "$hd" || return $?
+        br="$(get_branch_name)"
 
 	local srvs="$(_get_service_names_for_files $(list_modified))"
 	local killseq="$(list_kill_seq "$srvs")"
