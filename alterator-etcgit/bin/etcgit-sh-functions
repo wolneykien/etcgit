@@ -296,12 +296,41 @@ _change_url() {
 	fi
 }
 
+_get_max_local_branch() {
+        local lbr="${1-$(_get_branch_name)}"
+
+        git branch | sed -n -e "s,^[*[:space:]]*local/$lbr\\([0-9]*\\)[[:space:]]*$,\\1,p" | (
+                mn=
+                while read n; do
+                        [ -n "$n" ] || continue
+                        [ -n "$mn" ] || mn=0
+                        [ $n -gt $mn ] && mn=$n
+                done
+                echo "$mn"
+        )
+}
+
+_backup_local_head() {
+        local url="${1:-$(_get_branch_remote_url)}"
+        local lhd=$(git log -1 --oneline --no-abbrev-commit | sed -e 's/[[:space:]]\+.*$//')
+        local lbr="$(_get_branch_name)"
+        local rbr=$(_get_branch_for_head "$url" "$lhd")
+        local suf=
+
+        if [ -z "$rbr" ] && [ -n "$lbr" ]; then
+                suf="$(_get_max_local_branch)"
+                git branch "local/$lbr$suf"
+        fi
+}
+
 _reset_to_head() {
 	local url="${1:-$(_get_branch_remote_url)}"
 	local hd="${2-}"
 	[ -n "$hd" ] || return 0
 	local br="${3:-}"
 	[ -n "$br" ] || br="$(_get_branch_for_head "$url" "$hd")"
+
+        _backup_local_head
 
 	git fetch "$url" "$br" 1>/dev/null 2>&1 || return 1
 	git reset "$hd" 1>/dev/null 2>&1 || return 2
