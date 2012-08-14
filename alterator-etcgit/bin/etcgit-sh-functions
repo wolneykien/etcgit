@@ -589,7 +589,7 @@ _commit_tree() {
         local oldbr="$(_get_branch_name)"
         local ret=
 
-        if [ -n "$rhd" ]; then
+        if [ -n "$oldbr" ]; then
                 _reset_to_branch "$url" "$oldbr"
         fi
         git branch -M "$oldbr" "$br" 1>/dev/null 2>&1
