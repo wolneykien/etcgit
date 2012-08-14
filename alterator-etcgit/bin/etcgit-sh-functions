@@ -320,6 +320,7 @@ _backup_local_head() {
         if [ -z "$rbr" ] && [ -n "$lbr" ]; then
                 suf="$(_get_max_local_branch)"
                 git branch "local/$lbr$suf"
+                echo "*** The current branch $lbr doesn't have a corresponding remote branch and is backed up as local/$lbr$suf ***" >&2
         fi
 }
 
