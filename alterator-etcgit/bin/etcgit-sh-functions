@@ -55,7 +55,7 @@ list_remote_branches() {
 }
 
 _dump_file_permissions() {
-        stat -c '%n 0%a:%U:%G' $(find $(git ls-files) -type f 2>/dev/null | sed -n -e ':b H; s,/[^/]\+$,/,; t b; z; x; p; d' | LC_ALL=C sort -u) 2>/dev/null
+        stat -c '%n 0%a:%U:%G' $(find $(git ls-files) -type f 2>/dev/null | sed -n -e ':b H; s,/[^/]\+$,/,; t b; z; x; p; d' | LC_ALL=C sort -u) 2>/dev/null ||:
 }
 
 _apply_file_permissions() {
