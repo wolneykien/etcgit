@@ -383,6 +383,7 @@ _setup_filters() {
         [ -d $FILTERSDIR ] || return 0
 
         git ls-files $FILTERSDIR | while read f; do
+                echo "*** Setting up the filter $f ***" >&2
                 git config "filter.${f#$FILTERSDIR/}" "$f %f"
         done
 }
