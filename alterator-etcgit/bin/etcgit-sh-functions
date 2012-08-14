@@ -170,6 +170,13 @@ _list_S() {
 	sort
 }
 
+_srv_is_on() {
+        local srv="$1"
+        local runlevel=${2-$(_get_runlevel)}
+
+        chkconfig --level $runlevel "$srv" 1>/dev/null 2>&1
+}
+
 list_start_seq_for_srv() {
         local srvname="${1:-$in_service}"
         local runlevel="$(_get_runlevel)"
@@ -183,6 +190,7 @@ list_start_seq_for_srv() {
         for f in `_list_S "$rcd"`; do
 		ssrvname="$(_get_linked_srv "$rcd/$f")"
                 _in_list "$ssrvname" $killseq || continue
+                _srv_is_on "$ssrvname" $runlevel || continue
                 echo "$f"
         done
 }
