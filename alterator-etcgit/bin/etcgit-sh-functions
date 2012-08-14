@@ -368,7 +368,6 @@ _reset_to_branch() {
 		return 1
 	fi
 	git config "branch.$br.remote" "$url"
-        _setup_filters
 }
 
 _setup_filters() {
@@ -429,6 +428,13 @@ list_commits() {
 	)
 }
 
+_checkout_filters() {
+        local hd="$1"
+        [ -n "$hd" ] || return 1
+
+        git checkout --theirs $hd -- $FILTERSDIR 1>/dev/null 2>&1
+}
+
 _checkout_head() {
 	local hd="$1"
 	local br="${2-$(get_branch_name)}"
@@ -437,6 +443,8 @@ _checkout_head() {
 
         umask 0027
         [ -e .gitignore ] && git add . 1>/dev/null 2>&1
+        _checkout_filters "$hd"
+        _setup_filters
 	git reset --hard "$hd" 1>/dev/null 2>&1
         ret=$?
         if [ $ret -eq 0 ] && [ -e $PERMS ]; then
