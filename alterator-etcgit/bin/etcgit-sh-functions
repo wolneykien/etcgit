@@ -63,11 +63,12 @@ _apply_file_permissions() {
 }
 
 _get_remote_or_local_head() {
-        local url="${1-$(get_branch_remote_url)}"
+        local url="${1-${in_url-$(get_branch_remote_url)}}"
+        local br="${2-${in_branch-$(_get_branch_name)}}"
         local hd=
 
         if [ -n "$url" ]; then
-                hd="$(_get_head_for_branch "$url")"
+                hd="$(_get_head_for_branch "$url" "$br")"
         fi
 
         [ -n "$hd" ] || hd='HEAD'
@@ -76,12 +77,14 @@ _get_remote_or_local_head() {
 }
 
 _list_modified() {
+        local url="${1-${in_url-$(get_branch_remote_url)}}"
+        local br="${2-${in_branch-$(get_branch_name)}}"
 	(
 		_cd_if_git /etc || return 0
                 [ -e .gitignore ] && git add . 1>/dev/null 2>&1
                 _dump_file_permissions >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-                git diff --name-status "$(_get_remote_or_local_head)"
+                git diff --name-status "$(_get_remote_or_local_head "$url" "$br")"
                 git reset . 1>/dev/null 2>&1
 	)
 }
@@ -481,7 +484,7 @@ checkout_head() {
 
 reload_head() {
 	local hd="${1-${in_commit-}}"
-	local br="$(get_branch_name)"
+	local br="${2-${in_branch-$(get_branch_name)}}"
         [ -n "$hd" ] || [ -n "$br" ] || return 1
         [ -n "$hd" ] || hd="$(_get_head_for_branch "$(get_branch_remote_url)" "$br")"
 

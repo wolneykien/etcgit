@@ -34,7 +34,7 @@
       (form-update-enum "files"
                         (map (lambda (row)
                                (format-row row format-file))
-                             (woo-list "/etcgit"))))))
+                             (woo-list "/etcgit" 'branch (form-value "branch")))))))
 
 (define (fetch-repo)
   (catch/message
@@ -55,7 +55,7 @@
     (lambda ()
       (map (lambda (row)
              (cdr (format-row row (lambda (n l) n))))
-           (woo-list "/etcgit/start")))))
+           (woo-list "/etcgit/start" 'branch (form-value "branch"))))))
 
 (define (reload-head)
   (let ((srvs (start-list)))
@@ -68,7 +68,7 @@
 (define (do-reload)
   (catch/message
     (lambda ()
-      (woo-write "/etcgit/head")))
+      (woo-write "/etcgit/head" 'branch (form-value "branch"))))
   (read-repo)
   (read-files))
 
@@ -107,7 +107,7 @@
           (lambda ()
             (if branch
                 (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch branch)
-                (woo-write "/etcgit/head" 'commit #t 'msg msg))))
+                (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch (form-value "branch")))))
         (read-repo)
         (read-files)))))
 
@@ -118,7 +118,7 @@
   (form-bind "url" "enter" (lambda () #f))
   (form-bind "branch" "change"
     (lambda ()
-      (reset-to)))
+      (read-files)))
   (form-bind "history" "click"
     (lambda ()
       (form-replace "/etcgit/log"
