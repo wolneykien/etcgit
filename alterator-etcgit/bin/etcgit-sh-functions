@@ -54,8 +54,12 @@ list_remote_branches() {
 	git ls-remote --heads "$url" | sed 's,^.*/,,'
 }
 
+_step_path_dirs() {
+        sed -n -e ':b H; s,/[^/]\+$,,; t b; z; x; p; d' | LC_ALL=C sort -u
+}
+
 _dump_file_permissions() {
-        stat -c '%n 0%a:%U:%G' $(find $(git ls-files) -type f 2>/dev/null | sed -n -e ':b H; s,/[^/]\+$,/,; t b; z; x; p; d' | LC_ALL=C sort -u) 2>/dev/null ||:
+        stat -c '%n 0%a:%U:%G' $(find $(git ls-files) -type f 2>/dev/null | _step_path_dirs) 2>/dev/null ||:
 }
 
 _apply_file_permissions() {
@@ -202,9 +206,6 @@ _special_services() {
     [ -n "$*" ] || return 0
     for f in "$@"; do
 	case "$f" in
-	    /etc/net/*)
-		echo "network"
-		;;
 	    /etc/resolv.conf)
 		echo "network"
 		;;
@@ -233,8 +234,15 @@ list_modified() {
 	    -e 's,^.*$,/etc/&,'
 }
 
+list_modified_with_dirs() {
+	_list_modified | \
+        _step_path_dirs | \
+	sed -e 's/^[[:space:]]*[^[:space:]]\+[[:space:]]\+//' \
+	    -e 's,^.*$,/etc/&,'
+}
+
 list_kill_seq() {
-	local srvs="${1-$(_get_service_names_for_files $(list_modified))}"
+	local srvs="${1-$(_get_service_names_for_files $(list_modified_with_dirs))}"
 
 	for s in $srvs; do
                 list_kill_seq_for_srv "$s"
@@ -244,7 +252,7 @@ list_kill_seq() {
 }
 
 list_start_seq() {
-	local srvs="${1-$(_get_service_names_for_files $(list_modified))}"
+	local srvs="${1-$(_get_service_names_for_files $(list_modified_with_dirs))}"
 	local killseq="${2-}"
 
 	for s in $srvs; do
@@ -491,7 +499,7 @@ reload_head() {
 	reset_to_head "$hd" || return $?
         br="$(get_branch_name)"
 
-	local srvs="$(_get_service_names_for_files $(list_modified))"
+	local srvs="$(_get_service_names_for_files $(list_modified_with_dirs))"
 	local killseq="$(list_kill_seq "$srvs")"
 	local startseq="$(list_start_seq "$srvs" "$killseq")"
 	local ret=0
