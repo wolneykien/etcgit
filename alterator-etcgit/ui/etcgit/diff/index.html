@@ -8,14 +8,18 @@
   <body>
     <form method="POST">
       <div>
-        <a href="/etcgit">←<span translate="_">Back</span></a>
+        <a class="alterator-href" prefix-href="/etcgit?showbranch=" name="branch">←<span translate="_">Back</span></a>
 	<hr />
       </div>
       <div>
         <h3>
 	  <span translate="_">Сurrent modifications for file:</span>
 	  <code><span class="alterator-label" name="filename" /></code>
-	</h3>
+  </h3>
+      <p>
+      <span translate="_">Profile:</span>
+      <b><span class="alterator-label" name="branch" /></b>
+      </p>
 	<pre class="sh_diff"><span class="alterator-label" name="diff" /></pre>
       </div>
     </form>

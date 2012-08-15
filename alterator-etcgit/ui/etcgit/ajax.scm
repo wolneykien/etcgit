@@ -25,15 +25,19 @@
              row))
     (cons (car row) (format-row (cdr row) proc))))
 
-(define (format-file filename status)
-  (list 'filename filename 'status status 'class status))
+(define (format-file branch filename status)
+  (list 'filename filename 
+        'status status
+        'branchpath (string-append branch ":" filename)
+        'class status))
 
 (define (read-files)
   (catch/message
     (lambda ()
       (form-update-enum "files"
                         (map (lambda (row)
-                               (format-row row format-file))
+                               (format-row row (lambda (filename status)
+                                                 (format-file (form-value "branch") filename status))))
                              (woo-list "/etcgit" 'branch (form-value "branch")))))))
 
 (define (fetch-repo)
@@ -138,4 +142,7 @@
         (if ret
             (apply commit ret)))))
   (read-repo)
+  (let ((branch (form-value "showbranch")))
+    (if (and branch (not (string-null? branch)))
+      (form-update-value "branch" branch)))
   (read-files))

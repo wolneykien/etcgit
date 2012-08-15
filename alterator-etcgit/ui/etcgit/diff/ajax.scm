@@ -3,14 +3,18 @@
   :use-module (alterator woo)
   :export (init))
 
-(define (read-diff)
+(define (read-diff branch filename)
   (catch/message
     (lambda ()
       (form-update-value-list '("diff")
-			      (woo-read-first "/etcgit/diff"
-					      'file (form-value "file")))
+                              (woo-read-first "/etcgit/diff" 'branch branch
+                                                             'file filename))
       (js 'sh_highlightDocument))))
 
 (define (init)
-  (form-update-value "filename" (form-value "file"))
-  (read-diff))
+  (let* ((file (string-split (form-value "file") #\:))
+         (branch (car file))
+         (filename (string-join (cdr file) ":")))
+    (form-update-value "branch" branch)
+    (form-update-value "filename" filename)
+    (read-diff branch filename)))

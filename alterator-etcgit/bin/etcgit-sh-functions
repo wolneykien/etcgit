@@ -63,7 +63,7 @@ _apply_file_permissions() {
 }
 
 _get_remote_or_local_head() {
-        local url="${1-${in_url-$(get_branch_remote_url)}}"
+        local url="${1-${in_url-$(_get_branch_remote_url)}}"
         local br="${2-${in_branch-$(_get_branch_name)}}"
         local hd=
 
@@ -560,25 +560,29 @@ get_head_message() {
 
 _get_diff() {
 	local file="${1-${in_file-}}"
+        local url="${2-${in_url-$(_get_branch_remote_url)}}"
+        local br="${3-${in_branch-$(_get_branch_name)}}"
 
 	if [ -n "$file" ]; then
                 git add -f "$file" 1>/dev/null 2>&1
-                git diff "$(_get_remote_or_local_head)" -- "$file"
+                git diff "$(_get_remote_or_local_head "$url" "$br")" -- "$file"
                 git reset "$file" 1>/dev/null 2>&1
 	else
                 _dump_file_permissions >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-                git diff "$(_get_remote_or_local_head)"
+                git diff "$(_get_remote_or_local_head "$url" "$br")"
                 git reset . 1>/dev/null 2>&1
 	fi
 }
 
 get_diff() {
 	local file="${1-${in_file-}}"
+        local url="${2-${in_url-$(get_branch_remote_url)}}"
+        local br="${3-${in_branch-$(get_branch_name)}}"
 
 	(
 		_cd_if_git /etc || return 0
-		_get_diff "$file"
+		_get_diff "$file" "$url" "$br"
 	)
 }
 
