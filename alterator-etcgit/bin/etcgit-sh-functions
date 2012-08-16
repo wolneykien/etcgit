@@ -3,6 +3,7 @@
 LOCALDIR=.etcgit
 PERMS=$LOCALDIR/file-permissions
 FILTERSDIR=$LOCALDIR/filters
+PUBDIR=/srv/git/pub/etc.git
 
 _cd_init() {
 	cd "$1"
@@ -42,6 +43,27 @@ get_branch_remote_url() {
         )
 }
 
+_get_branch_status() {
+        local url="${1-$(_get_branch_remote_url)}"
+        local br="${2-$(_get_branch_name)}"
+        [ -n "$url" ] && [ -n "$br" ] || return 1
+        local lhd=$(_get_branch_head "$br")
+        local rhd=$(_get_remote_branch_head "$url" "$br")
+        local status=
+
+        if [ -n "$lhd" ] && [ -n "$rhd" ]; then
+                status=$(_compare_heads $rhd $lhd)
+        elif [ -n "$rhd" ]; then
+                status='nw'
+        elif [ -n "$lhd" ]; then
+                status='lo'
+        else
+                status='un'
+        fi
+
+        echo "$status"
+}
+
 _fetch_remote_branch() {
         local url="${1-$(_get_branch_remote_url)}"
         local br="${2-}"
@@ -49,36 +71,32 @@ _fetch_remote_branch() {
 
         [ -n "$url" ] && [ -n "$br" ] || return 1
 
-        _list_remote_branches "$url" | grep "^$br[[:space:]]\\+" | ( 
-                while read br rhd lhd status; do
-                        case "$status" in
-                                nw)
-                                        git fetch "$url" "$br:$br" 1>/dev/null 2>&1
-                                        ret=$?
-                                        ;;
-                                ff)
-                                        git fetch "$url" "$br" 1>/dev/null 2>&1
-                                        ret=$?
-                                        if [ $ret -eq 0 ]; then
-                                                git reset "$rhd" 1>/dev/null 2>&1
-                                                ret=$?
-                                        fi
-                                        ;;
-                                eq)
-                                        ret=0
-                                        ;;
-                                *)
-                                        ret=1
-                                        ;;
-                        esac
-
+        case "$(_get_branch_status "$url" "$br")" in
+                nw)
+                        git fetch "$url" "$br:$br" 1>/dev/null 2>&1
+                        ret=$?
+                        ;;
+                ff)
+                        git fetch "$url" "$br" 1>/dev/null 2>&1
+                        ret=$?
                         if [ $ret -eq 0 ]; then
-                                git config "branch.$br.remote" "$url"
+                                git reset $(_get_remote_branch_head "$url" "$br") 1>/dev/null 2>&1
+                                ret=$?
                         fi
-                done
+                        ;;
+                eq)
+                        ret=0
+                        ;;
+                *)
+                        ret=1
+                        ;;
+        esac
 
-                exit $ret
-        )
+        if [ $ret -eq 0 ]; then
+                git config "branch.$br.remote" "$url"
+        fi
+
+        return $ret
 }
 
 fetch_remote_branch() {
@@ -95,7 +113,8 @@ _delete_branch() {
         local br="$1"
 
         [ -n "$br" ] || return 0
-        git branch -D "$br" 1>/dev/null 2>&1
+        git branch -D "$br" 1>/dev/null 2>&1 || return 1
+        _publish_branch "$br" || return 2
 }
 
 delete_branch() {
@@ -131,9 +150,9 @@ _compare_heads() {
         if [ "$hda" = "$hdb" ]; then
                 echo 'eq'
         elif [ $(_count_ancestry_path "$hda..$hdb") -gt 0 ]; then
-                echo 'fr'
-        elif [ $(_count_ancestry_path "$hdb..$hda") -gt 0 ]; then
                 echo 'ff'
+        elif [ $(_count_ancestry_path "$hdb..$hda") -gt 0 ]; then
+                echo 'fr'
         else
                 echo 'br'
         fi
@@ -148,16 +167,24 @@ list_remote_branches() {
         )
 }
 
+_get_remote_branch_head() {
+        local url="${1-$(_get_branch_remote_url)}"
+        local br="${2-$(_get_branch_name)}"
+
+        git ls-remote --heads "$url" "$br" | sed -e 's,[[:space:]]\+,/refs/heads/.\+$,,'
+}
+
 _list_remote_branches() {
         local url="${1-$(_get_branch_remote_url)}"
 
 	git ls-remote --heads "$url" | \
                 while read rhd rbr; do
-                        lhd=$(git show-ref --heads | sed -n -e "s,^\\([0-9a-z]\\+\\)[[:space:]]\\+$rbr\$,\\1,p")
+                        rbr=${rbr##*/}
+                        lhd=$(_get_branch_head $rbr)
                         if [ -n "$lhd" ]; then
-                                printf '%s\t%s\t%s\t%s\n' ${rbr##*/} $rhd $lhd $(_compare_heads $rhd $lhd)
+                                printf '%s\t%s\t%s\t%s\n' $rbr $rhd $lhd $(_compare_heads $lhd $rhd)
                         else
-                                printf '%s\t%s\t%s\t%s\n' ${rbr##*/} $rhd '0' 'nw'
+                                printf '%s\t%s\t%s\t%s\n' $rbr $rhd '0' 'nw'
                         fi
                 done
 }
@@ -503,7 +530,7 @@ reload_branch() {
 _get_branch_head() {
 	local br="${1-$(_get_branch_name)}"
 
-	git show-ref --head | sed -e '1 {s/[[:space:]]\+HEAD$//; q}'
+        git show-ref --heads $br | sed -e 's,[[:space:]]\+,/refs/heads/.\+$,,'
 }
 
 get_branch_head() {
@@ -568,6 +595,7 @@ _commit_tree() {
 
         if [ -n "$nbr" ] && [ -n "$br" ] && [ "$nbr" != "$br" ]; then
                 git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
+                br="$nbr"
         fi
         if [ $ret -eq 0 ]; then
                 if [ -e .gitignore ]; then
@@ -592,10 +620,67 @@ _commit_tree() {
         if [ $ret -eq 0 ]; then
                 if [ -z "$br" ] && [ -n "$nbr" ]; then
                         git branch -M "$(_get_branch_name)" "$nbr" 1>/dev/null 2>&1 || ret=1
+                        br="$nbr"
                 fi
         fi
 
+        if [ $ret -eq 0 ]; then
+                _publish_branch "$br" || ret=6
+        fi
+
         return $ret
+}
+
+_publish_branch() {
+        [ -d $PUBDIR ] || return 0
+        local br="${1-$(_get_branch_name)}"
+        [ -n "$br" ] || return 1
+
+        case "$(_get_branch_status $PUBDIR "$br")" in
+                lo|fr)
+                        git push $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
+                        ;;
+                ff)
+                        git push --force $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
+                        ;;
+                un)
+                        git push $PUBDIR ":$br" 1>/dev/null 2>&1 || return 5
+                        ;;
+        esac
+}
+
+publish_branch() {
+        [ -d $PUBDIR ] || return 0
+        local br="${1-${in_branch-$(get_branch_name)}}"
+        [ -n "$br" ] || return 1
+
+        (
+                _cd_if_git /etc || return 0
+                _publish_branch "$br"
+        )
+}
+
+_publish_repo() {
+        [ -d $PUBDIR ] || return 0
+        git show-ref --heads | sed -e 's,^[0-9a-z]\+[[:space:]]\+refs/heads/,,' | \
+                while read br; do
+                        _publish_branch "$br" || exit $?
+                done
+}
+
+publish_repo() {
+        [ -d $PUBDIR ] || return 0
+        (
+                _cd_if_git /etc || return 0
+                _publish_repo
+        )
+}
+
+init_pubdir() {
+         if ! [ -d $PUBDIR ]; then
+                 mkdir -p $PUBDIR
+                 git init --bare $PUBDIR 1>/dev/null 2>&1
+         fi
 }
 
 commit_tree() {
@@ -624,7 +709,7 @@ commit_tree() {
                                 write_error_message "`_ 'Unable to commit changes locally'`"
                                 ;;
                         6)
-                                write_error_message "`_ 'Unable to commit changes to the public repository %s'`"
+                                write_error_message "`_ 'Unable to commit changes to the public repository'`"
                                 ;;
                         7)
                                 write_error_message "`_ 'Unable to sync the local repository'`"
