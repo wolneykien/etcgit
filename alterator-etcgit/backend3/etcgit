@@ -41,6 +41,8 @@ on_message()
 				head)
                                         if [ "$in_commit" = '#t' ]; then
                                                 commit_tree && write_string_param 'commit' "$(get_branch_head)"
+                                        elif [ -n "$in_commit" ]; then
+                                                reset_branch
                                         fi
 					;;
                                 branch)

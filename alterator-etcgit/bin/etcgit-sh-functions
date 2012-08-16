@@ -162,6 +162,23 @@ _list_remote_branches() {
                 done
 }
 
+_reset_branch() {
+        local hd="$1"
+        [ -n "$hd" ] || return 0
+
+        git reset "$hd" 1>/dev/null 2>&1
+}
+
+reset_branch() {
+        local hd="${1-$in_commit}"
+        [ -n "$hd" ] || return 0
+
+        (
+                _cd_if_git /etc || return 0
+                _reset_branch "$hd"
+        )
+}
+
 _step_path_dirs() {
         sed -n -e ':b H; s,/[^/]\+$,,; t b; z; x; p; d' | LC_ALL=C sort -u
 }
