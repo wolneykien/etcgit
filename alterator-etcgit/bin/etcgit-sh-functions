@@ -45,10 +45,40 @@ get_branch_remote_url() {
 _fetch_remote_branch() {
         local url="${1-$(_get_branch_remote_url)}"
         local br="${2-}"
+        local ret=0
 
         [ -n "$url" ] && [ -n "$br" ] || return 1
-        git fetch "$url" "$br:$br" 1>/dev/null 2>&1 && \
-        git config "branch.$br.remote" "$url"
+
+        _list_remote_branches "$url" | grep "^$br[[:space:]]\\+" | ( 
+                while read br rhd lhd status; do
+                        case "$status" in
+                                nw)
+                                        git fetch "$url" "$br:$br" 1>/dev/null 2>&1
+                                        ret=$?
+                                        ;;
+                                ff)
+                                        git fetch "$url" "$br" 1>/dev/null 2>&1
+                                        ret=$?
+                                        if [ $ret -eq 0 ]; then
+                                                git reset "$rhd" 1>/dev/null 2>&1
+                                                ret=$?
+                                        fi
+                                        ;;
+                                eq)
+                                        ret=0
+                                        ;;
+                                *)
+                                        ret=1
+                                        ;;
+                        esac
+
+                        if [ $ret -eq 0 ]; then
+                                git config "branch.$br.remote" "$url"
+                        fi
+                done
+
+                exit $ret
+        )
 }
 
 fetch_remote_branch() {
@@ -78,7 +108,7 @@ delete_branch() {
 }
 
 _list_local_branches() {
-        git branch | sed -e 's/^\*\?[[:space:]]\+//'
+        git show-ref --heads | sed -e 's,^\([0-9a-z]\+\)[[:space:]]\+refs/heads/\(.\+\)$,\2\t\1,'
 }
 
 list_local_branches() {
@@ -101,9 +131,9 @@ _compare_heads() {
         if [ "$hda" = "$hdb" ]; then
                 echo 'eq'
         elif [ $(_count_ancestry_path "$hda..$hdb") -gt 0 ]; then
-                echo 'gt'
+                echo 'fr'
         elif [ $(_count_ancestry_path "$hdb..$hda") -gt 0 ]; then
-                echo 'lt'
+                echo 'ff'
         else
                 echo 'br'
         fi
@@ -123,11 +153,11 @@ _list_remote_branches() {
 
 	git ls-remote --heads "$url" | \
                 while read rhd rbr; do
-                        lhd=$(git show-ref | sed -n -e "s,^\\([0-9a-z]\\+\\)[[:space:]]\\+$rbr\$,\\1,p")
+                        lhd=$(git show-ref --heads | sed -n -e "s,^\\([0-9a-z]\\+\\)[[:space:]]\\+$rbr\$,\\1,p")
                         if [ -n "$lhd" ]; then
-                                printf '%s\t%s\n' ${rbr##*/} $(_compare_heads $lhd $rhd)
+                                printf '%s\t%s\t%s\t%s\n' ${rbr##*/} $rhd $lhd $(_compare_heads $rhd $lhd)
                         else
-                                printf '%s\t%s\n' ${rbr##*/} 'nw'
+                                printf '%s\t%s\t%s\t%s\n' ${rbr##*/} $rhd '0' 'nw'
                         fi
                 done
 }

@@ -56,9 +56,16 @@ on_message()
 			case "$in__objects" in
 				branches)
                                         if [ -n "$in_url" ]; then
-                                                list_remote_branches | write_enum
+                                                list_remote_branches | while read br rhd lhd status; do
+                                                        write_table_item 'name' "$br" \
+                                                                         'remote_head' "$rhd" \
+                                                                         'local_head' "$lhd" \
+                                                                         'status' "$status"
+                                                done
                                         else
-                                                list_local_branches | _duplicate | write_enum
+                                                list_local_branches | while read br hd; do
+                                                        write_table_item 'name' "$br" 'head' "$hd"
+                                                done
                                         fi
 					;;
 				commits)
