@@ -42,6 +42,41 @@ get_branch_remote_url() {
         )
 }
 
+_fetch_remote_branch() {
+        local url="${1-$(_get_branch_remote_url)}"
+        local br="${2-}"
+
+        [ -n "$url" ] && [ -n "$br" ] || return 1
+        git fetch "$url" "$br:$br" 1>/dev/null 2>&1 && \
+        git config "branch.$br.remote" "$url"
+}
+
+fetch_remote_branch() {
+        local url="${1-${in_url-$(get_branch_remote_url)}}"
+        local br="${2-${in_branch-}}"
+
+        (
+                _cd_init /etc || return 1
+                _fetch_remote_branch "$url" "$br"
+        )
+}
+
+_delete_branch() {
+        local br="$1"
+
+        [ -n "$br" ] || return 0
+        git branch -D "$br" 1>/dev/null 2>&1
+}
+
+delete_branch() {
+        local br="${1-${in_branch-}}"
+
+        (
+                _cd_if_git /etc || return 0
+                _delete_branch "$br"
+        )
+}
+
 list_local_branches() {
 	(
 		_cd_if_git /etc || return 0
@@ -66,29 +101,14 @@ _apply_file_permissions() {
         eval "$(sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
 }
 
-_get_remote_or_local_head() {
-        local url="${1-${in_url-$(_get_branch_remote_url)}}"
-        local br="${2-${in_branch-$(_get_branch_name)}}"
-        local hd=
-
-        if [ -n "$url" ]; then
-                hd="$(_get_head_for_branch "$url" "$br")"
-        fi
-
-        [ -n "$hd" ] || hd='HEAD'
-
-        echo "$hd"
-}
-
 _list_modified() {
-        local url="${1-${in_url-$(get_branch_remote_url)}}"
-        local br="${2-${in_branch-$(get_branch_name)}}"
+        local br="${1-${in_branch-$(get_branch_name)}}"
 	(
 		_cd_if_git /etc || return 0
                 [ -e .gitignore ] && git add . 1>/dev/null 2>&1
                 _dump_file_permissions >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-                git diff --name-status "$(_get_remote_or_local_head "$url" "$br")"
+                git diff --name-status "$br" 2>/dev/null
                 git reset . 1>/dev/null 2>&1
 	)
 }
@@ -270,209 +290,72 @@ _format_status() {
 	sed -e 's/^[[:space:]]*\([^[:space:]]\+\)[[:space:]]\+\(.*\)$/\2\t\1/'
 }
 
-_get_branch_for_head() {
-	local url="${1:-$(_get_branch_remote_url)}"
-	[ -n "$url" ] || return 0
-	local hd="$2"
-	[ -n "$hd" ] || return 0
-
-	git ls-remote --heads "$url" | sed -n -e "/^$hd[[:space:]]\\+/ {s,^.*[[:space:]]\\+refs/heads/,,p; q}"
-}
-
-_get_first_branch() {
-	local url="${1:-$(_get_branch_remote_url)}"
-	[ -n "$url" ] || return 0
-
-	git ls-remote --heads "$url" | sed -e '1 {s,^.*[[:space:]]\+refs/heads/,,; q}'
-}
-
-_get_head_branch() {
-	local url="${1:-$(_get_branch_remote_url)}"
-	[ -n "$url" ] || return 0
-	local hd="$(git ls-remote "$url" | sed -n -e '/[[:space:]]\+HEAD$/ {s/[[:space:]]\+HEAD$//p; q}')"
-
-	if [ -n "$hd" ]; then
-		_get_branch_for_head "$url" "$hd"
-	fi
-}
-
-_change_url() {
-	local url="$1"
-	local br="${2-$(_get_branch_name)}"
-
-	if [ -z "$url" ]; then
-		rm -rf .git
-		return 0
-	fi
-	if [ -z "$br" ]; then
-		br="$(_get_head_branch "$url")"
-	fi
-	if [ -z "$br" ]; then
-		br="$(_get_first_branch "$url")"
-	fi
-	if [ -n "$br" ]; then
-		_reset_to_branch "$url" "$br" || return $?
-	fi
-}
-
-_get_max_local_branch() {
-        local lbr="${1-$(_get_branch_name)}"
-
-        git branch | sed -n -e "s,^[*[:space:]]*local/$lbr\\([0-9]*\\)[[:space:]]*$,\\1,p" | (
-                mn=
-                while read n; do
-                        [ -n "$n" ] || continue
-                        [ -n "$mn" ] || mn=0
-                        [ $n -gt $mn ] && mn=$n
-                done
-                echo "$mn"
-        )
-}
-
-_backup_local_head() {
-        local url="${1:-$(_get_branch_remote_url)}"
-        local lhd=$(git log -1 --oneline --no-abbrev-commit 2>/dev/null | sed -e 's/[[:space:]]\+.*$//')
-        [ -n "$lhd" ] || return 0
-        local lbr="$(_get_branch_name)"
-        local rbr=
-        local suf=
-
-        [ -n "$url" ] && rbr=$(_get_branch_for_head "$url" "$lhd")
-        if [ -z "$rbr" ] && [ -n "$lbr" ]; then
-                suf="$(_get_max_local_branch)"
-                git branch "local/$lbr$suf"
-                echo "*** The current branch $lbr doesn't have a corresponding remote branch and is backed up as local/$lbr$suf ***" >&2
-        fi
-}
-
-_reset_to_head() {
-	local url="${1:-$(_get_branch_remote_url)}"
-	local hd="${2-}"
-	[ -n "$hd" ] || return 0
-	local br="$(_get_branch_for_head "$url" "$hd")"
-
-        _backup_local_head
-
-	git fetch "$url" "$br" 1>/dev/null 2>&1 || return 1
-	git reset "$hd" 1>/dev/null 2>&1 || return 2
-	[ -n "$br" ] && git branch -M "$(_get_branch_name)" "$br" || return 3
-}
-
-reset_to_head() {
-	local url="$(get_branch_remote_url)"
-	local hd="${1-${in_head-}}"
-
-	(
-		_cd_init /etc
-		_reset_to_head "$url" "$hd"
-	)
-}
-
-_get_head_for_branch() {
-	local url="${1:-$(_get_branch_remote_url)}"
-	[ -n "$url" ] || return 0
-	local br="${2-$(_get_branch_name)}"
-	[ -n "$br" ] || return 0
-
-	git ls-remote --heads "$url" | sed -n -e "/[[:space:]]\\+refs\\/heads\\/$br\$/ {s/[[:space:]]\\+.*\$//p; q}"
-}
-
-_reset_to_branch() {
-	local url="${1:-$(_get_branch_remote_url)}"
-	local br="${2:-$(_get_branch_name)}"
-	local hd="$(_get_head_for_branch "$url" "$br")"
-
-	if [ -n "$hd" ]; then
-		_reset_to_head "$url" "$hd" || return $?
-	else
-		return 1
-	fi
-	git config "branch.$br.remote" "$url"
-}
-
 _setup_filters() {
         [ -d $FILTERSDIR ] || return 0
 
         git ls-files $FILTERSDIR | while read f; do
-                echo "*** Setting up the filter $f ***" >&2
                 git config "filter.${f#$FILTERSDIR/}" "$f %f"
         done
 }
 
-change_url() {
-	local url="${1-$in_url}"
-	local br="${in_branch-}"
-
-	(
-		_cd_init /etc
-		_change_url "$url" "$br"
-	)
-}
-
-reset_to_branch() {
-	local br="${1-${in_branch-}}"
-	local url=
-
-	(
-		_cd_init /etc
-		url="$(_get_branch_remote_url)"
-		[ -n "$url" ] || return 1
-		_reset_to_branch "$url" "$br" || return $?
-	)
-}
-
 _list_commits() {
-	local hd="${1-$(get_branch_name)}"
+	local br="${1-$(get_branch_name)}"
         local skip="${2-}"
 	local limit="${3-}"
 
         [ $skip -eq 0 ] && skip=
-        git log --format='%H%x09%ci%x09%s' ${skip:+--skip=$skip} ${limit:+-$limit} "$hd"
+        git log --format='%H%x09%ci%x09%s' ${skip:+--skip=$skip} ${limit:+-$limit} "$br"
 }
 
 list_commits() {
-	local hd="${1-${in_head-$(get_branch_name)}}"
+        local br="${1-${in_branch-$(get_branch_name)}}"
 	local limit="${2-${in_limit-100}}"
         local skip="${3-${in_skip-0}}"
-        local br="${in_branch-}"
-        local url=
 
 	(
 		_cd_if_git /etc || return 0
-                if [ -n "$br" ]; then
-                        url="${in_url-$(get_branch_remote_url)}"
-                        git fetch "$url" "$br" 1>/dev/null 2>&1 || return 1
-                        hd="$(_get_head_for_branch "$url" "$br")"
-                        [ -n "$hd" ] || return 2
-                fi
-		_list_commits "$hd" "$skip" "$limit"
+		_list_commits "$br" "$skip" "$limit"
 	)
 }
 
 _checkout_filters() {
-        local hd="$1"
-        [ -n "$hd" ] || return 1
+        local br="$1"
 
-        git checkout --theirs $hd -- $FILTERSDIR 1>/dev/null 2>&1
+        if [ -n "$(git ls-files --with-tree "$br" -- $FILTERSDIR 2>/dev/null)" ]; then
+                git checkout --theirs $br -- $FILTERSDIR 1>/dev/null 2>&1
+                return $?
+        fi
 }
 
-_checkout_head() {
-	local hd="$1"
-	local br="${2-$(get_branch_name)}"
+_setup_branch_filters() {
+        local br="$1"
+        [ -n "$br" ] || return 0
+
+        _checkout_filters "$br" && _setup_filters
+}
+
+_restore_filters() {
+        rm -rf $FILTERSDIR
+        if [ -n "$(git ls-files HEAD -- $FILTERSDIR 2>/dev/null)" ]; then
+                git checkout HEAD -- $FILTERSDIR 1>/dev/null 2>&1 || return $?
+                _setup_filters
+        fi
+}
+
+_checkout_branch() {
+	local br="${1-$(_get_branch_name)}"
         local mask="$(umask)"
-        local ret=
+        local ret=0
 
         umask 0027
-        [ -e .gitignore ] && git add . 1>/dev/null 2>&1
-        _checkout_filters "$hd" && _setup_filters ||:
-	git reset --hard "$hd" 1>/dev/null 2>&1
+        _setup_branch_filters "$br"
         ret=$?
-        if [ $ret -eq 0 ] && [ -e $PERMS ]; then
-                _apply_file_permissions <$PERMS
+        if [ $ret -eq 0 ]; then
+                git checkout --force "$br" 1>/dev/null 2>&1
                 ret=$?
         fi
-        if [ $ret -eq 0 ]; then
-                git branch -M "$(_get_branch_name)" "$br" 1>/dev/null 2>&1
+        if [ $ret -eq 0 ] && [ -e $PERMS ]; then
+                _apply_file_permissions <$PERMS
                 ret=$?
         fi
         umask $mask 1>/dev/null 2>&1
@@ -480,26 +363,19 @@ _checkout_head() {
         return $ret
 }
 
-checkout_head() {
-	local hd="${1-$in_commit}"
-	local br="${2-$(get_branch_name)}"
+checkout_branch() {
+	local br="${1-${in_branch-$(get_branch_name)}}"
 
 	(
-		_cd_init /etc
-		_checkout_head "$hd" "$br"
+		_cd_init /etc || return 1
+		_checkout_branch "$br"
 	)
 }
 
-reload_head() {
-	local hd="${1-${in_commit-}}"
-	local br="${2-${in_branch-$(get_branch_name)}}"
-        [ -n "$hd" ] || [ -n "$br" ] || return 1
-        [ -n "$hd" ] || hd="$(_get_head_for_branch "$(get_branch_remote_url)" "$br")"
+reload_branch() {
+	local br="${1-${in_branch-$(get_branch_name)}}"
 
-	reset_to_head "$hd" || return $?
-        br="$(get_branch_name)"
-
-	local srvs="$(_get_service_names_for_files $(list_modified_with_dirs))"
+	local srvs="$(_get_service_names_for_files $(list_modified_with_dirs "$br"))"
 	local killseq="$(list_kill_seq "$srvs")"
 	local startseq="$(list_start_seq "$srvs" "$killseq")"
 	local ret=0
@@ -514,8 +390,8 @@ reload_head() {
 	done
 
 	if [ $ret -eq 0 ]; then
-	        echo "*** Checking out $br ($hd) ***" >&2
-		checkout_head "$hd" "$br"
+	        echo "*** Checking out $br ***" >&2
+		checkout_branch "$br"
 		ret=$?
 		if [ $ret -ne 0 ]; then
                         printf '*** Unable to checkout the configuration ***\n' >&2
@@ -530,8 +406,6 @@ reload_head() {
 			ret=1
 		fi
 	done
-
-	reset_to_branch "$br"
 
 	return $ret
 }
@@ -567,30 +441,28 @@ get_head_message() {
 }
 
 _get_diff() {
-	local file="${1-${in_file-}}"
-        local url="${2-${in_url-$(_get_branch_remote_url)}}"
-        local br="${3-${in_branch-$(_get_branch_name)}}"
+	local file="$1"
+        local br="${2-$(_get_branch_name)}"
 
 	if [ -n "$file" ]; then
                 git add -f "$file" 1>/dev/null 2>&1
-                git diff "$(_get_remote_or_local_head "$url" "$br")" -- "$file"
+                git diff "$br" -- "$file" 2>/dev/null
                 git reset "$file" 1>/dev/null 2>&1
 	else
                 _dump_file_permissions >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-                git diff "$(_get_remote_or_local_head "$url" "$br")"
+                git diff "$br" 2>/dev/null
                 git reset . 1>/dev/null 2>&1
 	fi
 }
 
 get_diff() {
 	local file="${1-${in_file-}}"
-        local url="${2-${in_url-$(get_branch_remote_url)}}"
-        local br="${3-${in_branch-$(get_branch_name)}}"
+        local br="${2-${in_branch-$(get_branch_name)}}"
 
 	(
 		_cd_if_git /etc || return 0
-		_get_diff "$file" "$url" "$br"
+		_get_diff "$file" "$br"
 	)
 }
 
@@ -598,56 +470,39 @@ _get_default_message() {
         echo "`_ 'Commit'`"
 }
 
-_push_branch() {
-        local url="${1-$(_get_branch_remote_url)}"
-        [ -n "$url" ] || return 1
-        local br="${2-$(_get_branch_name)}"
-        [ -n "$br" ] || return 2
-
-        git push "$url" "$br" 1>/dev/null 2>&1
-}
-
 _commit_tree() {
         local msg="${1-$(_get_default_message)}"
-        local url="${2-$(_get_branch_remote_url)}"
-        local br="${3-$(_get_branch_name)}"
-        local oldbr="$(_get_branch_name)"
-        local ret=
+        local nbr="${2-$(_get_branch_name)}"
+        local br="$(_get_branch_name)"
+        local ret=0
 
-        if [ -n "$oldbr" ]; then
-                _reset_to_branch "$url" "$oldbr"
+        if [ -n "$nbr" ] && [ -n "$br" ] && [ "$nbr" != "$br" ]; then
+                git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
         fi
-        git branch -M "$oldbr" "$br" 1>/dev/null 2>&1
-        ret=$?
-        [ $ret -eq 0 ] || return 1
-
-        if [ -e .gitignore ]; then
-                git add . 1>/dev/null 2>&1 || ret=3
-                if [ $ret -eq 0 ]; then
-                        touch $PERMS
-                        git add -f $PERMS 1>/dev/null 2>&1 || ret=3
-                        if [ $ret -eq 0 ]; then
-                                _dump_file_permissions >$PERMS || ret=4
-                        fi
-                fi
-                if [ $ret -eq 0 ]; then
-                        git add -f $PERMS 1>/dev/null 2>&1 || ret=3
-                fi
-                if [ $ret -eq 0 ]; then
-                        git commit -a -m "$msg" 1>/dev/null 2>&1 || ret=5
-                fi
-                if [ $ret -eq 0 ]; then
-                        _push_branch "$url" || ret=6
-                        [ $ret -eq 0 ] || git reset HEAD^ 1>/dev/null 2>&1
-                fi
-                if [ $ret -eq 0 ]; then
-                        _reset_to_branch "$url" "$br" || ret=7
+        if [ $ret -eq 0 ]; then
+                if [ -e .gitignore ]; then
+                        git add . 1>/dev/null 2>&1 || ret=3
                 else
-                        git branch -M "$br" "$oldbr" 1>/dev/null 2>&1
-                        git reset . 1>/dev/null 2>&1
+                        ret=2
                 fi
-        else
-                ret=2
+        fi
+        if [ $ret -eq 0 ]; then
+                touch $PERMS
+                git add -f $PERMS 1>/dev/null 2>&1 || ret=3
+                if [ $ret -eq 0 ]; then
+                        _dump_file_permissions >$PERMS || ret=4
+                fi
+        fi
+        if [ $ret -eq 0 ]; then
+                git add -f $PERMS 1>/dev/null 2>&1 || ret=3
+        fi
+        if [ $ret -eq 0 ]; then
+                git commit -a -m "$msg" 1>/dev/null 2>&1 || ret=5
+        fi
+        if [ $ret -eq 0 ]; then
+                if [ -z "$br" ] && [ -n "$nbr" ]; then
+                        git branch -M "$(_get_branch_name)" "$nbr" 1>/dev/null 2>&1 || ret=1
+                fi
         fi
 
         return $ret
@@ -655,22 +510,16 @@ _commit_tree() {
 
 commit_tree() {
         local msg="${1-$in_msg}"
-        local url="${2-${in_url-$(get_branch_remote_url)}}"
-        local br="${3-${in_branch-$(get_branch_name)}}"
+        local br="${2-${in_branch-$(get_branch_name)}}"
         local ret=
-
-        if [ -z "$url" ]; then
-                write_error_message "`_ 'Please, set the repo URL first'`"
-                return 1
-        fi
 
         (
 	        _cd_if_git /etc || return 0
-                _commit_tree "$msg" "$url" "$br"
+                _commit_tree "$msg" "$br"
                 ret=$?
                 case $ret in
                         1)
-                                write_error_message "`_ 'Unable to make profile %s'`" "$br"
+                                write_error_message "`_ 'Unable to create the new branch %s'`" "$br"
                                 ;;
                         2)
                                 write_error_message "`_ 'Unable to add files to the commit: the .gitignore file doesn'\''t exist'`"
@@ -685,7 +534,7 @@ commit_tree() {
                                 write_error_message "`_ 'Unable to commit changes locally'`"
                                 ;;
                         6)
-                                write_error_message "`_ 'Unable to commit changes to the repository %s'`" "$url"
+                                write_error_message "`_ 'Unable to commit changes to the public repository %s'`"
                                 ;;
                         7)
                                 write_error_message "`_ 'Unable to sync the local repository'`"

@@ -13,7 +13,6 @@ on_message()
 			case "$in__objects" in
 				/)
 					write_string_param 'branch' "$(get_branch_name)"
-					write_string_param 'url' "$(get_branch_remote_url)"
                                         if [ -n "$(_list_modified)" ]; then
                                                 write_bool_param 'modified' 'yes'
                                         else
@@ -35,26 +34,28 @@ on_message()
 		write)
 			case "$in__objects" in
 				/)
-					${in_url+change_url}
 					if [ -n "$in_branch" ]; then
-						reset_to_branch
+                                                reload_branch
 					fi
 					;;
 				head)
                                         if [ "$in_commit" = '#t' ]; then
                                                 commit_tree && write_string_param 'commit' "$(get_branch_head)"
-                                        else
-                                                reload_head
                                         fi
 					;;
+                                branch)
+                                        if [ -n "${in_url-}" ]; then
+                                                fetch_remote_branch
+                                        else
+                                                delete_branch
+                                        fi
+                                        ;;
 			esac
 			;;
 		list)
 			case "$in__objects" in
 				branches)
-					if [ -n "$in_url" ]; then
-						list_remote_branches | _duplicate | write_enum
-					fi
+					list_local_branches | _duplicate | write_enum
 					;;
 				commits)
 					list_commits | (
