@@ -486,7 +486,7 @@ reload_branch() {
 _get_branch_head() {
 	local br="${1-$(_get_branch_name)}"
 
-	_list_commits "$br" 0 1 | sed -e 's/^\([^[:space:]]\+\)[[:space:]]\+.*$/\1/'
+	git show-ref --head | sed -e '1 {s/[[:space:]]\+HEAD$//; q}'
 }
 
 get_branch_head() {
