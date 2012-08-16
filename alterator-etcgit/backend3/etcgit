@@ -55,7 +55,11 @@ on_message()
 		list)
 			case "$in__objects" in
 				branches)
-					list_local_branches | _duplicate | write_enum
+                                        if [ -n "$in_url" ]; then
+                                                list_remote_branches | write_enum
+                                        else
+                                                list_local_branches | _duplicate | write_enum
+                                        fi
 					;;
 				commits)
 					list_commits | (

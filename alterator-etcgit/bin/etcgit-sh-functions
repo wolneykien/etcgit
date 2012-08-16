@@ -77,16 +77,59 @@ delete_branch() {
         )
 }
 
+_list_local_branches() {
+        git branch | sed -e 's/^\*\?[[:space:]]\+//'
+}
+
 list_local_branches() {
 	(
 		_cd_if_git /etc || return 0
-		git branch | sed -e 's/^\*\?[[:space:]]\+//'
+                _list_local_branches
 	)
+}
+
+_count_ancestry_path() {
+        local path="$1"
+
+        git log --ancestry-path "$path" | wc -l
+}
+
+_compare_heads() {
+        local hda="$1"
+        local hdb="$2"
+
+        if [ "$hda" = "$hdb" ]; then
+                echo 'eq'
+        elif [ $(_count_ancestry_path "$hda..$hdb") -gt 0 ]; then
+                echo 'gt'
+        elif [ $(_count_ancestry_path "$hdb..$hda") -gt 0 ]; then
+                echo 'lt'
+        else
+                echo 'br'
+        fi
 }
 
 list_remote_branches() {
         local url="${1-${in_url-$(get_branch_remote_url)}}"
-	git ls-remote --heads "$url" | sed 's,^.*/,,'
+
+        (
+                _cd_init /etc || return 1
+                _list_remote_branches "$url"
+        )
+}
+
+_list_remote_branches() {
+        local url="${1-$(_get_branch_remote_url)}"
+
+	git ls-remote --heads "$url" | \
+                while read rhd rbr; do
+                        lhd=$(git show-ref | sed -n -e "s,^\\([0-9a-z]\\+\\)[[:space:]]\\+$rbr\$,\\1,p")
+                        if [ -n "$lhd" ]; then
+                                printf '%s\t%s\n' ${rbr##*/} $(_compare_heads $lhd $rhd)
+                        else
+                                printf '%s\t%s\n' ${rbr##*/} 'nw'
+                        fi
+                done
 }
 
 _step_path_dirs() {
