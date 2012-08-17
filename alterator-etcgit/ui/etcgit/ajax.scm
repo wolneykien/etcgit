@@ -35,9 +35,8 @@
              (modified (woo-get-option data 'modified #f)))
         (form-update-enum "branch"
                           (map (lambda (row)
-                                 (format-row row (lambda (name label head)
-                                                   (append (format-branch branch name label)
-                                                           (list 'head head)))))
+                                 (format-row row (lambda (name label . other)
+                                                   (format-branch branch name label))))
                                (woo-list "/etcgit/branches")))
         (form-update-value "branch" branch)
         (js 'updateProfileName (or branch "--") modified)))))
