@@ -128,7 +128,10 @@ delete_branch() {
 }
 
 _list_local_branches() {
-        git show-ref --heads | sed -e 's,^\([0-9a-z]\+\)[[:space:]]\+refs/heads/\(.\+\)$,\2\t\1,'
+        git show-ref --heads | \
+                while read head name; do
+                        printf '%s\t%s\t%s\n' "${name##*/}" "$head" "$(_get_branch_remote_url "${name##*/}")"
+                done
 }
 
 list_local_branches() {

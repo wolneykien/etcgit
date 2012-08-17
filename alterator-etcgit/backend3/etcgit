@@ -124,10 +124,11 @@ on_message()
                                                                          'status' "$status"
                                                 done
                                         else
-                                                list_local_branches | while read br hd; do
+                                                list_local_branches | while read br hd url; do
                                                         write_table_item 'name' "$br" \
                                                                          'label' "$br" \
-                                                                         'head' "$hd"
+                                                                         'head' "$hd" \
+                                                                         'url' "$url"
                                                 done
                                         fi
 					;;
