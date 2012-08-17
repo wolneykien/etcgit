@@ -43,7 +43,7 @@ get_branch_remote_url() {
         )
 }
 
-_get_branch_status() {
+_get_remote_branch_status() {
         local url="${1-$(_get_branch_remote_url)}"
         local br="${2-$(_get_branch_name)}"
         [ -n "$url" ] && [ -n "$br" ] || return 1
@@ -53,9 +53,9 @@ _get_branch_status() {
 
         if [ -n "$lhd" ] && [ -n "$rhd" ]; then
                 status=$(_compare_heads $rhd $lhd)
-        elif [ -n "$rhd" ]; then
-                status='nw'
         elif [ -n "$lhd" ]; then
+                status='nw'
+        elif [ -n "$rhd" ]; then
                 status='lo'
         else
                 status='un'
@@ -66,22 +66,23 @@ _get_branch_status() {
 
 _fetch_remote_branch() {
         local url="${1-$(_get_branch_remote_url)}"
-        local br="${2-}"
+        local br="${2-$(_get_branch_name)}"
         local ret=0
 
         [ -n "$url" ] && [ -n "$br" ] || return 1
 
-        case "$(_get_branch_status "$url" "$br")" in
-                nw)
-                        git fetch "$url" "$br:$br" 1>/dev/null 2>&1
-                        ret=$?
-                        ;;
-                ff)
-                        git fetch "$url" "$br" 1>/dev/null 2>&1
-                        ret=$?
-                        if [ $ret -eq 0 ]; then
-                                git reset $(_get_remote_branch_head "$url" "$br") 1>/dev/null 2>&1
+        case "$(_get_remote_branch_status "$url" "$br")" in
+                lo|fr)
+                        if [ "$br" != "$(_get_branch_name)" ]; then
+                                git fetch "$url" "$br:$br" 1>/dev/null 2>&1
                                 ret=$?
+                        else
+                                git fetch "$url" "$br" 1>/dev/null 2>&1
+                                ret=$?
+                                if [ $ret -eq 0 ]; then
+                                        git reset $(_get_remote_branch_head "$url" "$br") 1>/dev/null 2>&1
+                                        ret=$?
+                                fi
                         fi
                         ;;
                 eq)
@@ -171,7 +172,7 @@ _get_remote_branch_head() {
         local url="${1-$(_get_branch_remote_url)}"
         local br="${2-$(_get_branch_name)}"
 
-        git ls-remote --heads "$url" "$br" | sed -e 's,[[:space:]]\+,/refs/heads/.\+$,,'
+        git ls-remote --heads "$url" "$br" | sed -e 's,[[:space:]]\+refs/heads/.\+$,,'
 }
 
 _list_remote_branches() {
@@ -530,7 +531,7 @@ reload_branch() {
 _get_branch_head() {
 	local br="${1-$(_get_branch_name)}"
 
-        git show-ref --heads $br | sed -e 's,[[:space:]]\+,/refs/heads/.\+$,,'
+        git show-ref --heads $br | sed -e 's,[[:space:]]\+refs/heads/.\+$,,'
 }
 
 get_branch_head() {
@@ -636,14 +637,14 @@ _publish_branch() {
         local br="${1-$(_get_branch_name)}"
         [ -n "$br" ] || return 1
 
-        case "$(_get_branch_status $PUBDIR "$br")" in
-                lo|fr)
+        case "$(_get_remote_branch_status $PUBDIR "$br")" in
+                nw|ff)
                         git push $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
                         ;;
-                ff)
+                fr)
                         git push --force $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
                         ;;
-                un)
+                lo|un)
                         git push $PUBDIR ":$br" 1>/dev/null 2>&1 || return 5
                         ;;
         esac
@@ -677,10 +678,22 @@ publish_repo() {
 }
 
 init_pubdir() {
-         if ! [ -d $PUBDIR ]; then
-                 mkdir -p $PUBDIR
-                 git init --bare $PUBDIR 1>/dev/null 2>&1
-         fi
+        local ret=0
+        if ! [ -d $PUBDIR ]; then
+                mkdir -p $PUBDIR
+                git init --bare $PUBDIR 1>/dev/null 2>&1
+                ret=$?
+        fi
+
+        return $ret
+}
+
+get_pubdir() {
+        echo "$PUBDIR"
+}
+
+delete_pubdir() {
+        [ -d $PUBDIR ] && rm -rf $PUBDIR
 }
 
 commit_tree() {
