@@ -38,15 +38,23 @@
   <body>
     <form method="POST">
       <div>
-	<span translate="_">Configuration repository:</span>
-	<input type="text" class="text" name="url" />
-	<input class="btn" type="button" name="fetch" value="Fetch" />
-	<span translate="_">Profile:</span>
-	<select name="branch" />
-	<input class="btn" type="button" name="history" value="View log…" />
-	<input class="btn" type="button" name="reset-to" value="Reset to" />
-	<input class="btn" type="button" name="update" value="Update profile" />
-	<input class="btn" type="button" name="new" value="New profile…" />
+        <table>
+          <tr>
+            <td><span translate="_">Profile:</span></td>
+            <td><select name="branch" /></td>
+            <td style="padding-left: 15px;">
+              <input class="btn" type="button" name="history" value="View log…" />
+              <input class="btn" type="button" name="reset-to" value="Reset to" />
+              <input class="btn" type="button" name="update" value="Update profile" />
+              <input class="btn" type="button" name="new" value="New profile…" />
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3">
+              <a href="/etcgit/repo"><span translate="_">Manage repository…</span></a>
+            </td>
+          </tr>
+        </table>
       </div>
       <div>
       <h3><span translate="_">Modified files</span></h3>

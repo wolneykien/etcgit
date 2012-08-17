@@ -5,16 +5,6 @@
   :use-module (alterator woo)
   :export (init))
 
-(define (read-repo)
-  (catch/message
-    (lambda ()
-      (let ((data (woo-read-first "/etcgit")))
-        (form-update-value "url" (woo-get-option data 'url))
-        (form-update-enum "branch"
-                          (woo-list "/etcgit/branches" 'url (woo-get-option data 'url)))
-        (form-update-value "branch" (woo-get-option data 'branch))
-        (js 'updateProfileName (woo-get-option data 'branch "--") (woo-get-option data 'modified #f))))))
-
 (define (format-row row proc)
   (if (plist? row)
     (apply proc
@@ -31,28 +21,41 @@
         'branchpath (string-append branch ":" filename)
         'class status))
 
+(define (format-branch current name label)
+  (list 'name name
+        'label (or (and (equal? name current)
+                        (string-append "* " label))
+                   label)))
+
+(define (read-repo)
+  (catch/message
+    (lambda ()
+      (let* ((data (woo-read-first "/etcgit"))
+             (branch (woo-get-option data 'branch))
+             (modified (woo-get-option data 'modified #f)))
+        (form-update-enum "branch"
+                          (map (lambda (row)
+                                 (format-row row (lambda (name label head)
+                                                   (append (format-branch branch name label)
+                                                           (list 'head head)))))
+                               (woo-list "/etcgit/branches")))
+        (form-update-value "branch" branch)
+        (js 'updateProfileName (or branch "--") modified)))))
+
 (define (read-files)
   (catch/message
     (lambda ()
-      (form-update-enum "files"
-                        (map (lambda (row)
-                               (format-row row (lambda (filename status)
-                                                 (format-file (form-value "branch") filename status))))
-                             (woo-list "/etcgit" 'branch (form-value "branch")))))))
-
-(define (fetch-repo)
-  (catch/message
-    (lambda ()
-      (woo-write "/etcgit" 'url (form-value "url"))))
-    (read-repo)
-    (read-files))
-
-(define (reset-to)
-  (catch/message
-    (lambda ()
-      (woo-write "/etcgit" 'branch (form-value "branch"))))
-    (read-repo)
-    (read-files))
+      (let* ((files (map (lambda (row)
+                           (format-row row (lambda (filename status)
+                                             (format-file (form-value "branch") filename status))))
+                         (woo-list "/etcgit" 'branch (form-value "branch"))))
+             (modified (not (null? files)))
+             (repo-data (woo-read-first "/etcgit"))
+             (current (equal? (woo-get-option repo-data 'branch) (form-value "branch"))))
+        (form-update-enum "files" files)
+        (form-update-activity "reset-to" modified)
+        (form-update-activity "update" (and current modified))
+        (form-update-activity "new" (and current modified))))))
 
 (define (start-list)
   (catch/message
@@ -72,7 +75,7 @@
 (define (do-reload)
   (catch/message
     (lambda ()
-      (woo-write "/etcgit/head" 'branch (form-value "branch"))))
+      (woo-write "/etcgit" 'branch (form-value "branch"))))
   (read-repo)
   (read-files))
 
@@ -111,15 +114,11 @@
           (lambda ()
             (if branch
                 (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch branch)
-                (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch (form-value "branch")))))
+                (woo-write "/etcgit/head" 'commit #t 'msg msg))))
         (read-repo)
         (read-files)))))
 
 (define (init)
-  (form-bind "fetch" "click"
-    (lambda ()
-      (fetch-repo)))
-  (form-bind "url" "enter" (lambda () #f))
   (form-bind "branch" "change"
     (lambda ()
       (read-files)))

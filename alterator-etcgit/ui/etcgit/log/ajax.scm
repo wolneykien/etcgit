@@ -66,9 +66,8 @@
   (catch/message
     (lambda ()
       (let ((data (woo-read-first "/etcgit")))
-        (form-update-value "url" (woo-get-option data 'url))
         (form-update-enum "branch"
-                          (woo-list "/etcgit/branches" 'url (woo-get-option data 'url)))))))
+                          (woo-list "/etcgit/branches"))))))
 
 (define (init-log branch)
   (read-repo)
