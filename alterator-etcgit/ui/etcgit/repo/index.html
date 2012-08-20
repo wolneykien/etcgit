@@ -16,21 +16,32 @@
         <input type="text" cass="text" name="url" />
         <input type="button" class="btn" name="fetch" value="Fetch" />
         </p>
-        <h4><span translate="_">Branches</span></h4>
+        <h4><span translate="_">Profiles</span></h4>
+        <table>
+        <tr>
+        <td>
       <table name="branches" class="alterator-listbox multi-select" style="width: 0%;">
         <thead class="frame-table">
           <tr>
-            <th><span translate="_">Name</span></th>
-            <th><span translate="_">Status</span></th>
+            <th nowrap="nowrap"><span translate="_">Name</span></th>
+            <th nowrap="nowrap"><span translate="_">Remote/local status</span></th>
+            <th nowrap="nowrap"><span translate="_">Publication status</span></th>
           </tr>
         </thead>
         <tbody class="frame-table">
           <tr alterator-class="class">
             <td><span class="alterator-label" name="label" /></td>
             <td><span class="alterator-label" name="status" /></td>
+            <td><span class="alterator-label" name="publication_status" /></td>
           </tr>
         </tbody>
       </table>
+        </td>
+        <td>
+
+        </td>
+        </tr>
+        </table>
       </div>
     </form>
   </body>
