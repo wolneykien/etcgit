@@ -95,9 +95,9 @@ on_message()
                                         fi
 					;;
                                 branch)
-                                        if [ -n "${in_url-}" ]; then
+                                        if [ -n "${in_url:-}" ]; then
                                                 fetch_remote_branch
-                                        else
+                                        elif [ "${in_url-#t}" != "#t" ] && [ "${in_url:-#f}" = "#f" ]; then
                                                 delete_branch
                                         fi
                                         ;;
