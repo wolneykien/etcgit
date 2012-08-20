@@ -34,25 +34,26 @@
             ((lo) (list (_ "local only")))
             ((ff) (list ( _ "behind") 'class "A"))
             ((fr) (list (_ "ahead") 'class "M"))
+            ((eq) (list (_ "equal")))
             ((br) (list (_ "derived") 'class "M"))
             (else (list (_ "unknown") 'class "D")))))
 
 (define (read-branches)
-  (catch/message
-    (lambda ()
-      (form-update-enum "branches" (map (lambda (row)
-                                          (format-row row format-branch))
-                                        (woo-list "/etcgit/branches" (form-value "url")))))))
+  (let ((url (form-value "url")))
+    (if (and url (not (string-null? url)))
+      (catch/message
+        (lambda ()
+          (form-update-enum "branches" (map (lambda (row)
+                                              (format-row row format-branch))
+                                            (woo-list "/etcgit/branches" 'url url))))))))
 
 (define (read-branch)
   (catch/message
     (lambda ()
       (let ((data (woo-read-first "/etcgit/branch")))
-        (form-update-value "url" (woo-get-option data 'url))))))
+        (form-update-value "url" (woo-get-option data 'url ""))))))
 
 (define (init)
   (form-bind "fetch" "click" read-branches)
   (read-branch)
-  (let ((url (form-value "url")))
-    (if (and url (not (string-null? url)))
-      (read-branches))))
+  (read-branches))
