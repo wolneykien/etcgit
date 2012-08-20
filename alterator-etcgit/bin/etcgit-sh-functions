@@ -37,7 +37,7 @@ _get_branch_remote_url() {
 	local br="$1"
 
 	[ -z "$br" ] && br="$(_get_branch_name)"
-	git config "branch.$br.remote"
+        [ -n "$br" ] && git config "branch.$br.remote"
 }
 
 get_branch_remote_url() {
@@ -73,6 +73,7 @@ _get_remote_branch_status() {
 _fetch_remote_branch() {
         local url="${1-$(_get_branch_remote_url)}"
         local br="${2-$(_get_branch_name)}"
+        [ -n "$br" ] || return 1
         local ret=0
 
         [ -n "$url" ] && [ -n "$br" ] || return 1
@@ -183,6 +184,7 @@ list_remote_branches() {
 _get_remote_branch_head() {
         local url="${1-$(_get_branch_remote_url)}"
         local br="${2-$(_get_branch_name)}"
+        [ -n "$br" ] || return 1
 
         git ls-remote --heads "$url" "$br" | sed -e 's,[[:space:]]\+refs/heads/.\+$,,'
 }
@@ -238,7 +240,7 @@ _list_modified() {
                 [ -e .gitignore ] && git add . 1>/dev/null 2>&1
                 _dump_file_permissions >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-                git diff --name-status "$br" 2>/dev/null
+                git diff --name-status $br 2>/dev/null
                 git reset . 1>/dev/null 2>&1
 	)
 }
@@ -429,12 +431,12 @@ _setup_filters() {
 }
 
 _list_commits() {
-	local br="${1-$(get_branch_name)}"
+	local br="${1-$(_get_branch_name)}"
         local skip="${2-}"
 	local limit="${3-}"
 
         [ $skip -eq 0 ] && skip=
-        git log --format='%H%x09%ci%x09%s' ${skip:+--skip=$skip} ${limit:+-$limit} "$br"
+        git log --format='%H%x09%ci%x09%s' ${skip:+--skip=$skip} ${limit:+-$limit} $br
 }
 
 list_commits() {
@@ -474,6 +476,7 @@ _restore_filters() {
 
 _checkout_branch() {
 	local br="${1-$(_get_branch_name)}"
+        [ -n "$br" ] || return 1
         local mask="$(umask)"
         local ret=0
 
@@ -543,7 +546,11 @@ reload_branch() {
 _get_branch_head() {
 	local br="${1-$(_get_branch_name)}"
 
-        git show-ref --heads $br | sed -e 's,[[:space:]]\+refs/heads/.\+$,,'
+        if [ -n "$br" ]; then
+                git show-ref --heads "$br" | sed -e 's,[[:space:]]\+refs/heads/.\+$,,'
+        else
+                git show-ref --head | sed -n -e 's,[[:space:]]\+HEAD$,,p'
+        fi
 }
 
 get_branch_head() {
@@ -576,12 +583,12 @@ _get_diff() {
 
 	if [ -n "$file" ]; then
                 git add -f "$file" 1>/dev/null 2>&1
-                git diff "$br" -- "$file" 2>/dev/null
+                git diff $br -- "$file" 2>/dev/null
                 git reset "$file" 1>/dev/null 2>&1
 	else
                 _dump_file_permissions >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-                git diff "$br" 2>/dev/null
+                git diff $br 2>/dev/null
                 git reset . 1>/dev/null 2>&1
 	fi
 }
@@ -592,7 +599,7 @@ get_diff() {
 
 	(
 		_cd_if_git /etc || return 0
-		_get_diff "$file" "$br"
+		_get_diff "$file" $br
 	)
 }
 
@@ -606,7 +613,10 @@ _commit_tree() {
         local br="$(_get_branch_name)"
         local ret=0
 
-        if [ -n "$nbr" ] && [ -n "$br" ] && [ "$nbr" != "$br" ]; then
+        if [ -z "$br" ] && [ -z "$nbr" ]; then
+                nbr="master"
+        fi
+        if [ -n "$nbr" ] && [ "$nbr" != "$br" ]; then
                 git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
                 br="$nbr"
         fi
