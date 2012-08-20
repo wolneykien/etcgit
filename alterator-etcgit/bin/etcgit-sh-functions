@@ -53,16 +53,16 @@ _get_remote_branch_status() {
         local url="${1-$(_get_branch_remote_url)}"
         local br="${2-$(_get_branch_name)}"
         [ -n "$url" ] && [ -n "$br" ] || return 1
-        local lhd=$(_get_branch_head "$br")
+        local lhd=${3-$(_get_branch_head "$br")}
         local rhd=$(_get_remote_branch_head "$url" "$br")
         local status=
 
         if [ -n "$lhd" ] && [ -n "$rhd" ]; then
                 status=$(_compare_heads $rhd $lhd)
         elif [ -n "$lhd" ]; then
-                status='nw'
-        elif [ -n "$rhd" ]; then
                 status='lo'
+        elif [ -n "$rhd" ]; then
+                status='nw'
         else
                 status='un'
         fi
@@ -79,7 +79,7 @@ _fetch_remote_branch() {
         [ -n "$url" ] && [ -n "$br" ] || return 1
 
         case "$(_get_remote_branch_status "$url" "$br")" in
-                lo|fr)
+                nw|fr)
                         if [ "$br" != "$(_get_branch_name)" ]; then
                                 git fetch "$url" "$br:$br" 1>/dev/null 2>&1
                                 ret=$?
@@ -189,18 +189,30 @@ _get_remote_branch_head() {
         git ls-remote --heads "$url" "$br" | sed -e 's,[[:space:]]\+refs/heads/.\+$,,'
 }
 
+_print_branch_info() {
+        local url="${1-$(_get_branch_remote_url)}"
+        local br="${2-$(_get_branch_name)}"
+        local lhd=${3-$(_get_branch_head "$br")}
+        [ -n "$lhd" ] || lhd=0
+        local rhd=
+
+        if [ -n "$br" ]; then
+                if [ -n "$url" ]; then
+                        rhd=$(_get_remote_branch_head "$url" "$br")
+                fi
+                [ -n "$rhd" ] || rhd=0
+                printf '%s\t%s\t%s\t%s\t%s\n' $br $rhd $lhd $(_get_remote_branch_status "$url" "$br") $(_get_remote_branch_status $PUBDIR "$br")
+        else
+                return 1
+        fi
+}
+
 _list_remote_branches() {
         local url="${1-$(_get_branch_remote_url)}"
 
 	git ls-remote --heads "$url" | \
                 while read rhd rbr; do
-                        rbr=${rbr##*/}
-                        lhd=$(_get_branch_head $rbr)
-                        if [ -n "$lhd" ]; then
-                                printf '%s\t%s\t%s\t%s\n' $rbr $rhd $lhd $(_compare_heads $lhd $rhd)
-                        else
-                                printf '%s\t%s\t%s\t%s\n' $rbr $rhd '0' 'nw'
-                        fi
+                        _print_branch_info "$url" "${rbr##*/}"
                 done
 }
 
@@ -209,6 +221,27 @@ _reset_branch() {
         [ -n "$hd" ] || return 0
 
         git reset "$hd" 1>/dev/null 2>&1
+}
+
+_list_all_branches() {
+        local url="${1-$(_get_branch_remote_url)}"
+
+        (
+                git show-ref --heads | sed -n -e 's,^[0-9a-f]\+[[:space:]]\+refs/heads/,,p'
+                git ls-remote --heads "$url" | sed -n -e 's,^[0-9a-f]\+[[:space:]]\+refs/heads/,,p'
+        ) | sort -u | \
+                while read br; do
+                        _print_branch_info "$url" "$br"
+                done
+}
+
+list_all_branches() {
+        local url="${1-${in_url-$(get_branch_remote_url)}}"
+
+        (
+                _cd_init /etc || return 1
+                _list_all_branches "$url"
+        )
 }
 
 reset_branch() {
@@ -660,13 +693,13 @@ _publish_branch() {
         [ -n "$br" ] || return 1
 
         case "$(_get_remote_branch_status $PUBDIR "$br")" in
-                nw|ff)
+                lo|fr)
                         git push $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
                         ;;
-                fr)
+                ff)
                         git push --force $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
                         ;;
-                lo|un)
+                nw|un)
                         git push $PUBDIR ":$br" 1>/dev/null 2>&1 || return 5
                         ;;
         esac

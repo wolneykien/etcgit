@@ -129,12 +129,13 @@ on_message()
 			case "$in__objects" in
 				branches)
                                         if [ -n "$in_url" ]; then
-                                                list_remote_branches | while read br rhd lhd status; do
+                                                list_all_branches | while read br rhd lhd status pstatus; do
                                                         write_table_item 'name' "$br" \
                                                                          'label' "$br" \
                                                                          'remote_head' "$rhd" \
                                                                          'local_head' "$lhd" \
-                                                                         'status' "$status"
+                                                                         'status' "$status" \
+                                                                         'publication_status' "$pstatus"
                                                 done
                                         else
                                                 list_local_branches | while read br hd url; do
