@@ -1,0 +1,37 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html wf="none">
+  <head>
+    <link type="text/css" rel="stylesheet" href="/design/styles/etcgit.css" />
+  </head>
+  <body>
+    <form method="POST">
+      <div>
+        <a class="alterator-href" prefix-href="/etcgit?showbranch=" name="branch">←<span translate="_">Back</span></a>
+	<hr />
+      </div>
+      <div>
+        <h3><span translate="_">Repository management</span></h3>
+        <p>
+        <span translate="_">Remote repository URL:</span>
+        <input type="text" cass="text" name="url" />
+        <input type="button" class="btn" name="fetch" value="Fetch" />
+        </p>
+        <h4><span translate="_">Branches</span></h4>
+      <table name="branches" class="alterator-listbox" width="100%">
+        <thead class="frame-table">
+          <tr>
+            <th><span translate="_">Name</span></th>
+            <th><span translate="_">Status</span></th>
+          </tr>
+        </thead>
+        <tbody class="frame-table">
+          <tr alterator-class="class">
+            <td><span class="alterator-label" name="label" /></td>
+            <td><span class="alterator-label" name="status" /></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </form>
+  </body>
+</html>

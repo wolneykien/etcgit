@@ -77,6 +77,9 @@ on_message()
                                                 write_string_param 'msg' "$(get_head_message "$hd")"
                                         )
 					;;
+                                branch)
+                                        write_string_param 'url' "$(get_branch_remote_url)"
+                                        ;;
 				diff)
 					write_string_param 'diff' "$(get_diff)"
 					;;
