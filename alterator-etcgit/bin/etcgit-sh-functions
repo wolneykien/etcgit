@@ -114,6 +114,9 @@ _delete_branch() {
         local br="$1"
 
         [ -n "$br" ] || return 0
+        if [ "$br" = "$(_get_branch_name)" ]; then
+                git checkout --detach "$br"
+        fi
         git branch -D "$br" 1>/dev/null 2>&1 || return 1
         _publish_branch "$br" || return 2
 }
