@@ -17,7 +17,13 @@ _cd_if_git() {
 }
 
 _get_branch_name() {
-	git branch | sed -n -e 's/^\*[[:space:]]\+//p'
+        local br=$(git branch | sed -n -e 's/^\*[[:space:]]\+//p')
+
+        if [ "$br" = "(no branch)" ]; then
+                echo ""
+        else
+                echo "$br"
+        fi
 }
 
 get_branch_name() {

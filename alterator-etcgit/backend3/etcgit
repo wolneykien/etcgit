@@ -47,13 +47,23 @@ disable_publication() {
         service xinetd reload 1>/dev/null 2>&1
 }
 
+read_branch_name() {
+        local br="$(get_branch_name)"
+
+        if [ -z "$br" ]; then
+                echo '#f'
+        else
+                echo "$br"
+        fi
+}
+
 on_message()
 {
 	case "$in_action" in
 		read)
 			case "$in__objects" in
 				/)
-					write_string_param 'branch' "$(get_branch_name)"
+                                        write_string_param 'branch' "$(read_branch_name)"
                                         if [ -n "$(_list_modified)" ]; then
                                                 write_bool_param 'modified' 'yes'
                                         else
