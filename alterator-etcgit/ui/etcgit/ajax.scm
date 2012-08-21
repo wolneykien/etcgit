@@ -32,13 +32,21 @@
     (lambda ()
       (let* ((data (woo-read-first "/etcgit"))
              (branch (woo-get-option data 'branch))
-             (modified (woo-get-option data 'modified #f)))
+             (modified (woo-get-option data 'modified #f))
+             (branches (woo-list "/etcgit/branches"))
+             (first-branch (if (not (null? branches))
+                             (car (list-head branches 1))
+                             '()))
+             (first-branch-name (and (not (null? first-branch))
+                                     (cdr (plistq 'name (if (plist? first-branch)
+                                                          first-branch
+                                                          (cdr first-branch)))))))
         (form-update-enum "branch"
                           (map (lambda (row)
                                  (format-row row (lambda (name label . other)
                                                    (format-branch branch name label))))
-                               (woo-list "/etcgit/branches")))
-        (form-update-value "branch" branch)
+                               branches))
+        (form-update-value "branch" (or branch first-branch-name))
         (js 'updateProfileName (or branch "--") modified)))))
 
 (define (read-files)
@@ -49,12 +57,12 @@
                                              (format-file (form-value "branch") filename status))))
                          (woo-list "/etcgit" 'branch (form-value "branch"))))
              (modified (not (null? files)))
-             (repo-data (woo-read-first "/etcgit"))
-             (current (equal? (woo-get-option repo-data 'branch) (form-value "branch"))))
+             (branch (form-value "branch")))
         (form-update-enum "files" files)
         (form-update-activity "reset-to" modified)
-        (form-update-activity "update" (and current modified))
-        (form-update-activity "new" (and current modified))))))
+        (form-update-activity "update" (and branch (not (string-null? branch)) modified))
+        (form-update-activity "new" modified)
+        (form-update-activity "history" (and branch (not (string-null? branch))))))))
 
 (define (start-list)
   (catch/message
@@ -113,7 +121,7 @@
           (lambda ()
             (if branch
                 (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch branch)
-                (woo-write "/etcgit/head" 'commit #t 'msg msg))))
+                (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch (form-value "branch")))))
         (read-repo)
         (read-files)))))
 
