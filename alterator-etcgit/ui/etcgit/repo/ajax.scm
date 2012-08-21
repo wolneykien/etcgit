@@ -62,7 +62,8 @@
         (lambda ()
           (form-update-enum "branches" (map (lambda (row)
                                               (format-row row format-branch))
-                                            (woo-list "/etcgit/branches" 'url url))))))))
+                                            (woo-list "/etcgit/branches" 'url url)))
+          (form-bind "branches" "change" update-buttons))))))
 
 (define (read-publication)
   (catch/message
@@ -80,7 +81,10 @@
   (read-publication))
 
 (define (update-buttons)
-  (let* ((selected? (not (null? (string-split (or (form-value "branches") "") #\;)))))
+  (let* ((branches (form-value "branches"))
+         (selected? (and branches
+                         (not (string-null? branches))
+                         (not (null? (string-split branches #\;))))))
     (form-update-activity "update-selected" selected?)
     (form-update-activity "publish-selected" selected?)
     (form-update-activity "delete-selected" selected?)))
@@ -93,7 +97,6 @@
 
 (define (init)
   (form-bind "fetch" "click" read-branches)
-  (form-bind "branches" "change" update-buttons)
   (form-bind "publication-status" "change" write-publication-status)
   (read-repo)
   (read-branches)
