@@ -266,14 +266,31 @@ _apply_file_permissions() {
         eval "$(sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
 }
 
+_test_smudge() {
+        local file="${1:-}"
+        [ -n "$file" ] || return 0
+        local br="${2-$(_get_branch_name)}"
+
+        [ ! -e "${file%/*}/.gitattributes" ] || \
+        ! grep -q "^${file##*/}[[:space:]]\\+filter=" "${file%/*}/.gitattributes" || \
+        [ $(git diff $br -- "$file" 2>/dev/null | wc -l) -gt 0 ]
+}
+
 _list_modified() {
         local br="${1-${in_branch-$(get_branch_name)}}"
 	(
 		_cd_if_git /etc || return 0
                 [ -e .gitignore ] && git add . 1>/dev/null 2>&1
+                [ -n "$br" ] && _setup_branch_filters "$br"
                 _dump_file_permissions >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-                git diff --name-status $br 2>/dev/null
+                git diff --name-status $br 2>/dev/null | \
+                        while read status file; do
+                                if [ "$status" != 'M' ] || _test_smudge "$file" "$br"; then
+                                        printf '%s\t%s\n' "$status" "$file"
+                                fi
+                        done
+                [ -n "$br" ] && _restore_filters
                 git reset . 1>/dev/null 2>&1
 	)
 }
@@ -485,11 +502,24 @@ list_commits() {
 
 _checkout_filters() {
         local br="$1"
+        local attrs=
+        local ret=1
 
         if [ -n "$(git ls-files --with-tree "$br" -- $FILTERSDIR 2>/dev/null)" ]; then
                 git checkout --theirs $br -- $FILTERSDIR 1>/dev/null 2>&1
-                return $?
+                ret=$?
         fi
+
+        if [ $ret -eq 0 ]; then
+                ret=1
+                attrs="$(git ls-files --with-tree "$br" -- '*.gitattributes')"
+                if [ -n "$attrs" ]; then
+                        git checkout --theirs $br -- $attrs
+                        ret=$?
+                fi
+        fi
+
+        return $ret
 }
 
 _setup_branch_filters() {
@@ -500,6 +530,14 @@ _setup_branch_filters() {
 }
 
 _restore_filters() {
+        local attrs=
+
+        attrs="$(git ls-files -- '*.gitattributes')"
+        [ -n "$attrs" ] && rm -f $attrs
+
+        attrs="$(git ls-files -- '*.gitattributes')"
+        [ -n "$attrs" ] && git checkout --ours HEAD -- $attrs
+
         rm -rf $FILTERSDIR
         if [ -n "$(git ls-files HEAD -- $FILTERSDIR 2>/dev/null)" ]; then
                 git checkout HEAD -- $FILTERSDIR 1>/dev/null 2>&1 || return $?
@@ -614,7 +652,9 @@ _get_diff() {
 	local file="$1"
         local br="${2-$(_get_branch_name)}"
 
+        [ -n "$br" ] && _setup_branch_filters "$br"
 	if [ -n "$file" ]; then
+                [ "$file" = "$PERMS" ] && _dump_file_permissions >$PERMS
                 git add -f "$file" 1>/dev/null 2>&1
                 git diff $br -- "$file" 2>/dev/null
                 git reset "$file" 1>/dev/null 2>&1
@@ -624,6 +664,7 @@ _get_diff() {
                 git diff $br 2>/dev/null
                 git reset . 1>/dev/null 2>&1
 	fi
+        [ -n "$br" ] && _restore_filters
 }
 
 get_diff() {
