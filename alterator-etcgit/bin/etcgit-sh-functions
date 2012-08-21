@@ -692,7 +692,10 @@ _commit_tree() {
         fi
         if [ -n "$nbr" ] && [ "$nbr" != "$br" ]; then
                 if git branch | grep -wq "$nbr"; then
-                        git checkout "$nbr" 1>/dev/null 2>&1 || ret=1
+                        git symbolic-ref HEAD "refs/heads/$nbr" 1>/dev/null 2>&1 || ret=1
+                        if [ $ret -eq 0 ]; then
+                                git reset $nbr 1>/dev/null 2>&1 || ret=1
+                        fi
                 else
                         git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
                 fi
@@ -807,7 +810,7 @@ commit_tree() {
                 ret=$?
                 case $ret in
                         1)
-                                write_error_message "`_ 'Unable to create the new branch %s'`" "$br"
+                                write_error_message "`_ 'Unable to create/switch to the branch %s'`" "$br"
                                 ;;
                         2)
                                 write_error_message "`_ 'Unable to add files to the commit: the .gitignore file doesn'\''t exist'`"
