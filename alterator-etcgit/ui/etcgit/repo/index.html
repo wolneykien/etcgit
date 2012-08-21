@@ -12,9 +12,35 @@
       <div>
         <h3><span translate="_">Repository management</span></h3>
         <p>
-        <span translate="_">Remote repository URL:</span>
-        <input type="text" cass="text" name="url" />
-        <input type="button" class="btn" name="fetch" value="Fetch" />
+        <table>
+          <tr>
+            <td style="padding-right: 16px;">
+              <span translate="_">Remote repository URL:</span>
+              <input type="text" cass="text" name="url" />
+            </td>
+            <td>
+              <input type="button" class="btn" name="fetch" value="Fetch" />
+            </td>
+          </tr>
+        </table>
+        </p>
+        <p>
+        <table>
+          <tr style="vertical-align: bottom;">
+            <td style="padding-right: 16px;">
+              <input type="checkbox" cass="checkbox" name="publication-status" />
+              <span translate="_">Publish repository</span>
+            </td>
+            <td>
+              <span name="publication-info">
+                <i>
+                <span translate="_">Public URL:</span>
+                <b><span class="alterator-label" name="publicurl" /></b>
+                </i>
+              </span>
+            </td>
+          </tr>
+        </table>
         </p>
         <h4><span translate="_">Profiles</span></h4>
         <table>
@@ -37,8 +63,30 @@
         </tbody>
       </table>
         </td>
-        <td>
-
+        <td style="padding-top: 10px; padding-left: 16px;">
+          <table>
+            <tr>
+              <td style="padding-right: 8px;">
+                <input type="button" class="btn" name="update-selected" value="Update selected profiles" />
+              </td>
+              <td>
+                <input type="button" class="btn" name="update-all" value="Update all profiles" />
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <input type="button" class="btn" name="publish-selected" value="Publish selected profiles" />
+              </td>
+              <td>
+                <input type="button" class="btn" name="publish-all" value="Publish all profiles" />
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                <input type="button" class="btn" name="delete-selected" value="Delete selected profiles" />
+              </td>
+            </tr>
+          </table>
         </td>
         </tr>
         </table>
