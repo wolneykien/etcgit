@@ -51,9 +51,9 @@ read_branch_name() {
         local br="$(get_branch_name)"
 
         if [ -z "$br" ]; then
-                echo '#f'
+                write_bool_param 'branch' 'no'
         else
-                echo "$br"
+                write_string_param 'branch' "$br"
         fi
 }
 
@@ -63,7 +63,7 @@ on_message()
 		read)
 			case "$in__objects" in
 				/)
-                                        write_string_param 'branch' "$(read_branch_name)"
+                                        read_branch_name
                                         if [ -n "$(_list_modified)" ]; then
                                                 write_bool_param 'modified' 'yes'
                                         else
