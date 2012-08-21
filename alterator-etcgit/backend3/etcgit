@@ -116,7 +116,7 @@ on_message()
                                         ;;
                                 publication)
                                         if [ -n "${in_status-}" ]; then
-                                                if test_bool "$in_status"; then
+                                                if test_bool "$in_status" || [ "$in_status" = 'on' ]; then
                                                         enable_publication
                                                 else
                                                         disable_publication

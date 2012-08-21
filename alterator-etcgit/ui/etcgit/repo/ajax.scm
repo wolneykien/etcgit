@@ -64,13 +64,37 @@
                                               (format-row row format-branch))
                                             (woo-list "/etcgit/branches" 'url url))))))))
 
-(define (read-branch)
+(define (read-publication)
   (catch/message
     (lambda ()
-      (let ((data (woo-read-first "/etcgit/branch")))
-        (form-update-value "url" (woo-get-option data 'url ""))))))
+      (let ((publication-data (woo-read-first "/etcgit/publication")))
+        (form-update-value "publication-status" (if (woo-get-option publication-data 'status) "on" "off"))
+        (form-update-visibility "publication-info" (woo-get-option publication-data 'status))
+        (form-update-value "publicurl" (woo-get-option publication-data 'url))))))
+
+(define (read-repo)
+  (catch/message
+    (lambda ()
+      (let ((branch-data (woo-read-first "/etcgit/branch")))
+        (form-update-value "url" (woo-get-option branch-data 'url "")))))
+  (read-publication))
+
+(define (update-buttons)
+  (let* ((selected? (not (null? (string-split (or (form-value "branches") "") #\;)))))
+    (form-update-activity "update-selected" selected?)
+    (form-update-activity "publish-selected" selected?)
+    (form-update-activity "delete-selected" selected?)))
+
+(define (write-publication-status)
+  (catch/message
+    (lambda ()
+      (woo-write "/etcgit/publication" 'status (form-value "publication-status"))))
+  (read-publication))
 
 (define (init)
   (form-bind "fetch" "click" read-branches)
-  (read-branch)
-  (read-branches))
+  (form-bind "branches" "change" update-buttons)
+  (form-bind "publication-status" "change" write-publication-status)
+  (read-repo)
+  (read-branches)
+  (update-buttons))
