@@ -650,7 +650,11 @@ _commit_tree() {
                 nbr="master"
         fi
         if [ -n "$nbr" ] && [ "$nbr" != "$br" ]; then
-                git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
+                if git branch | grep -wq "$nbr"; then
+                        git checkout "$nbr" 1>/dev/null 2>&1 || ret=1
+                else
+                        git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
+                fi
                 br="$nbr"
         fi
         if [ $ret -eq 0 ]; then
