@@ -80,24 +80,62 @@
         (form-update-value "url" (woo-get-option branch-data 'url "")))))
   (read-publication))
 
+(define (selected-branches)
+  (let ((branches (form-value "branches")))
+    (if (and branches (not (string-null? branches)))
+      (string-split branches #\;)
+      '())))
+
+
 (define (update-buttons)
-  (let* ((branches (form-value "branches"))
-         (selected? (and branches
-                         (not (string-null? branches))
-                         (not (null? (string-split branches #\;))))))
+  (let ((selected? (not (null? (selected-branches)))))
     (form-update-activity "update-selected" selected?)
-    (form-update-activity "publish-selected" selected?)
     (form-update-activity "delete-selected" selected?)))
 
 (define (write-publication-status)
   (catch/message
     (lambda ()
       (woo-write "/etcgit/publication" 'status (form-value "publication-status"))))
-  (read-publication))
+  (read-publication)
+  (read-branches))
+
+(define (fetch-branch branch)
+  (catch/message
+    (lambda ()
+      (woo-write "/etcgit/branch" 'branch branch 'url (form-value "url")))))
+
+(define (fetch-all-branches)
+  (catch/message
+    (lambda () 
+      (for-each (lambda (row)
+                  (let* ((row (if (plist? row) row (cdr row)))
+                         (name (cdr (plistq 'name row)))
+                         (status (cdr (plistq 'status row))))
+                    (if (or (equal? status "nw")
+                            (equal? status "fr"))
+                      (fetch-branch name))))
+                (woo-list "/etcgit/branches" 'url (form-value "url")))))
+  (read-branches))
+
+(define (fetch-selected-branches)
+  (for-each fetch-branch (selected-branches))
+  (read-branches))
+
+(define (delete-branch branch)
+  (catch/message
+    (lambda ()
+      (woo-write "/etcgit/branch" 'branch branch 'url ""))))
+
+(define (delete-selected-branches)
+  (for-each delete-branch (selected-branches))
+  (read-branches))
 
 (define (init)
   (form-bind "fetch" "click" read-branches)
   (form-bind "publication-status" "change" write-publication-status)
+  (form-bind "update-all" "click" fetch-all-branches)
+  (form-bind "update-selected" "click" fetch-selected-branches)
+  (form-bind "delete-selected" "click" delete-selected-branches)
   (read-repo)
   (read-branches)
   (update-buttons))
