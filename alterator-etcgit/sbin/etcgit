@@ -8,10 +8,10 @@ write_error() {
 
 if [ $# -eq 0 ]; then
         if [ -n "$(_list_modified)" ]; then
-                echo "$(get_branch_remote_url) $(get_branch_name)*"
+                echo "$(get_branch_head) $(get_branch_name)*"
                 exit 1
         else
-                echo "$(get_branch_remote_url) $(get_branch_name)"
+                echo "$(get_branch_head) $(get_branch_name)"
                 exit 0
         fi
 else
@@ -34,7 +34,7 @@ else
                         if [ $# -gt 0 ]; then
                                 list_remote_branches "$1"
                         else
-                                get_branch_name
+                                list_local_branches
                         fi
                         ;;
                 log)
