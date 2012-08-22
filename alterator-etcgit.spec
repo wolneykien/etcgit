@@ -13,6 +13,7 @@ License: GPL
 Group: System/Configuration/Other
 Requires: alterator >= 4.8-alt1
 Requires: alterator-fbi >= 5.27-alt1
+Requires: git-server
 Conflicts: alterator >= 5.0
 Conflicts: alterator-fbi >= 6.0
 
