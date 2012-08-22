@@ -1,7 +1,7 @@
 %define _altdata_dir %_datadir/alterator
 
 Name: alterator-etcgit
-Version: 1.0
+Version: 1.1
 Release: alt1
 
 BuildArch: noarch
@@ -40,5 +40,8 @@ using git.
 %_sbindir/*
 
 %changelog
+* Wed Aug 22 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt1
+- Refactor the module for working with the local repo copy.
+
 * Fri Jul 20 2012 Paul Wolneykien <manowar@altlinux.ru> 1.0-alt1
 - Initial draft release.
