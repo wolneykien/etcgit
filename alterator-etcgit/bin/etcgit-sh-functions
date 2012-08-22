@@ -122,7 +122,7 @@ _delete_branch() {
 
         [ -n "$br" ] || return 0
         if [ "$br" = "$(_get_branch_name)" ]; then
-                git checkout --detach "$br"
+                git checkout --detach "$br" 1>/dev/null 2>&1
         fi
         git branch -D "$br" 1>/dev/null 2>&1 || return 1
         _publish_branch "$br" || return 2
@@ -502,22 +502,33 @@ list_commits() {
 
 _checkout_filters() {
         local br="$1"
-        local attrs=
+        local filters="$(git ls-files --with-tree "$br" -- $FILTERSDIR 2>/dev/null)"
+        local attrs="$(git ls-files --with-tree "$br" -- '*.gitattributes' 2>/dev/null)"
+        local mask="$(umask)"
         local ret=1
 
-        if [ -n "$(git ls-files --with-tree "$br" -- $FILTERSDIR 2>/dev/null)" ]; then
-                git checkout --theirs $br -- $FILTERSDIR 1>/dev/null 2>&1
+        umask 0027
+        if [ -n "$filters" ]; then
+                git checkout --theirs $br -- $filters 1>/dev/null 2>&1
                 ret=$?
+                if [ $ret -eq 0 ]; then
+                        git show "$br:$PERMS" | grep "^$LOCALDIR" | _apply_file_permissions
+                        ret=$?
+                fi
         fi
 
         if [ $ret -eq 0 ]; then
                 ret=1
-                attrs="$(git ls-files --with-tree "$br" -- '*.gitattributes')"
                 if [ -n "$attrs" ]; then
                         git checkout --theirs $br -- $attrs
                         ret=$?
+                        if [ $ret -eq 0 ]; then
+                                git show "$br:$PERMS" | grep '\.gitattributes' | _apply_file_permissions
+                                ret=$?
+                        fi
                 fi
         fi
+        umask $mask 1>/dev/null 2>&1
 
         return $ret
 }
@@ -681,6 +692,25 @@ _get_default_message() {
         echo "`_ 'Commit'`"
 }
 
+_add_filters_to_index() {
+        local br="$1"
+        [ -n "$br" ] || return 0
+        local filters="$(git ls-files --with-tree "$br" -- $FILTERSDIR 2>/dev/null)"
+        local attrs="$(git ls-files --with-tree "$br" -- '*.gitattributes')"
+
+        if [ -n "$filters" ]; then
+                git add -f $filters 1>/dev/null 2>&1
+                ret=$?
+        fi
+
+        if [ $ret -eq 0 ] && [ -n "$attrs" ]; then
+                git add -f $attrs  1>/dev/null 2>&1
+                ret=$?
+        fi
+
+        return $ret
+}
+
 _commit_tree() {
         local msg="${1-$(_get_default_message)}"
         local nbr="${2-$(_get_branch_name)}"
@@ -695,6 +725,14 @@ _commit_tree() {
                         git symbolic-ref HEAD "refs/heads/$nbr" 1>/dev/null 2>&1 || ret=1
                         if [ $ret -eq 0 ]; then
                                 git reset $nbr 1>/dev/null 2>&1 || ret=1
+                        fi
+                        if [ -z "$br" ]; then
+                                if [ $ret -eq 0 ]; then
+                                        _setup_branch_filters "$nbr" || ret=1
+                                fi
+                                if [ $ret -eq 0 ]; then
+                                        _add_filters_to_index "$nbr" || ret=3
+                                fi
                         fi
                 else
                         git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
