@@ -18,10 +18,11 @@ else
         CMD="$1"; shift
         case "$CMD" in
                 head)
-                        (
-                                hd="$(get_branch_head)"
-                                echo "$hd $(get_head_message "$hd")"
-                        )
+                        if [ -n "$(_list_modified)" ]; then
+                                echo "$(get_branch_head)+"
+                        else
+                                echo "$(get_branch_head)"
+                        fi
                         ;;
                 diff)
                         if [ $# -gt 0 ]; then
