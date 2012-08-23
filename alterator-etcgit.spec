@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt2
+Release: alt3
 
 BuildArch: noarch
 
@@ -41,6 +41,10 @@ using git.
 %_sbindir/*
 
 %changelog
+* Fri Aug 24 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt3
+- Output the last (HEAD) commit message on plain `etcgit` call.
+- Fix undefined "in_head" parameter (functions).
+
 * Thu Aug 23 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt2
 - Fix/update readonly operations of the etcgit tool.
 
