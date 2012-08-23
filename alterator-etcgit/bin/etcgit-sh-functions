@@ -651,7 +651,7 @@ _get_head_message() {
 }
 
 get_head_message() {
-        local hd="${1-$in_head}"
+        local hd="${1-${in_head-HEAD}}"
 
         (
                 _cd_if_git /etc || return 0
