@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt3
+Release: alt4
 
 BuildArch: noarch
 
@@ -41,6 +41,9 @@ using git.
 %_sbindir/*
 
 %changelog
+* Tue Aug 28 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt4
+- Implement asynchronous 'switch' command.
+
 * Fri Aug 24 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt3
 - Output the last (HEAD) commit message on plain `etcgit` call.
 - Fix undefined "in_head" parameter (functions).
