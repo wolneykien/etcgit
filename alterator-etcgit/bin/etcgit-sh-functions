@@ -70,6 +70,45 @@ _get_remote_branch_status() {
         echo "$status"
 }
 
+_find_branch_or_head() {
+        local hd0="${2-$(get_branch_name)}"
+
+        while read -r hd1 br; do
+                if [ "$hd1" = "$hd0" ]; then
+                        echo "${br#refs/heads/}"
+                        return 0
+                fi
+                if [ "${br#refs/heads/}" = "$hd0" ]; then
+                        echo "${br#refs/heads/}"
+                        return 0
+                fi
+        done
+
+        return 1
+}
+
+remote_branch_for_head() {
+        local url="${1-$(get_branch_remote_url)}"
+        local hd="${2-$(get_branch_name)}"
+
+        git ls-remote --heads "$url" | _find_branch_or_head "$hd"
+}
+
+_local_branch_for_head() {
+        local hd="${1-$(_get_branch_name)}"
+
+        git show-ref --heads | _find_branch_or_head "$hd"
+}
+
+local_branch_for_head() {
+        local hd="${1-$(get_branch_name)}"
+
+        (
+                _cd_init /etc || return 1
+                _local_branch_for_head "$hd"
+        )
+}
+
 _fetch_remote_branch() {
         local url="${1-$(_get_branch_remote_url)}"
         local br="${2-$(_get_branch_name)}"

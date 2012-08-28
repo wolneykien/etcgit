@@ -48,5 +48,29 @@ else
                 status)
                         _list_modified
                         ;;
+                fetch)
+                        if [ $# -gt 1 ]; then
+                                url="$1"
+                                hd="$2"
+                                br="$(remote_branch_for_head "$url" "$hd")"
+                                fetch_remote_branch "$url" "$br"
+                        elif [ $# -gt 0 ]; then
+                                hd="$1"
+                                br="$(local_branch_for_head "$hd")"
+                                delete_branch "$br"
+                        fi
+                        ;;
+                checkout)
+                        if [ $# -gt 0 ]; then
+                                hd="$1"
+                                br="$(local_branch_for_head "$hd")"
+                                reload_branch "$br"
+                        fi
+                        ;;
+                switch)
+                        cat <<EOF | at now 2>/dev/null
+$0 fetch "$1" "$2" && $0 checkout "$2"
+EOF
+                        ;;
         esac
 fi
