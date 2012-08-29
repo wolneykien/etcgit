@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt4
+Release: alt5
 
 BuildArch: noarch
 
@@ -41,6 +41,10 @@ using git.
 %_sbindir/*
 
 %changelog
+* Wed Aug 29 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt5
+- Do not walk-up the paths to .gitignore and the other auxiliary
+  files. Thus, do not restart extra services by accident.
+
 * Tue Aug 28 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt4
 - Implement asynchronous 'switch' command.
 
