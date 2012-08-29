@@ -294,7 +294,9 @@ reset_branch() {
 }
 
 _step_path_dirs() {
-        sed -n -e ':b H; s,/[^/]\+$,,; t b; z; x; p; d' | sed -e '/^$/ d' | LC_ALL=C sort -u
+        sed -n -e '/\.git[^\/]\+$/ {p; d}' \
+	       -e '/\.etcgit[^\/]\+$/ {p; d}' \
+	       -e ':b H; s,/[^/]\+$,,; t b; z; x; p; d' | sed -e '/^$/ d' | LC_ALL=C sort -u
 }
 
 _dump_file_permissions() {
