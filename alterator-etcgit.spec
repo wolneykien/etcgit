@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt5
+Release: alt6
 
 BuildArch: noarch
 
@@ -41,6 +41,9 @@ using git.
 %_sbindir/*
 
 %changelog
+* Fri Aug 31 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt6
+- Use X-Alterator-Monitoring-Control category.
+
 * Wed Aug 29 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt5
 - Do not walk-up the paths to .gitignore and the other auxiliary
   files. Thus, do not restart extra services by accident.
