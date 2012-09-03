@@ -23,6 +23,15 @@ BuildPreReq: alterator rpm-macros-fillup rpm-macros-alterator
 Alterator module to control versions of configuration files in /etc
 using git.
 
+%package -n etcgit
+Summary: A tool to control versions of configuration files in /etc using git
+License: GPL
+Group: System/Configuration/Other
+
+%description -n etcgit
+A tool to control versions of configuration files in /etc using git.
+Currently is used by the "etcgit" Alterator module.
+
 %prep
 %setup -q
 
@@ -37,6 +46,8 @@ using git.
 %_alterator_datadir/ui/etcgit
 %_alterator_backend3dir/etcgit
 %_alterator_datadir/design
+
+%files -n etcgit
 %_bindir/*
 %_sbindir/*
 
