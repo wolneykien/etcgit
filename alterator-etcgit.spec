@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt6
+Release: alt7
 
 BuildArch: noarch
 
@@ -52,6 +52,9 @@ Currently is used by the "etcgit" Alterator module.
 %_sbindir/*
 
 %changelog
+* Mon Sep 03 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt7
+- Extract the `etcgit` tool to the subpackage.
+
 * Fri Aug 31 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt6
 - Use X-Alterator-Monitoring-Control category.
 
