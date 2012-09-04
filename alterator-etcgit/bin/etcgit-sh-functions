@@ -71,7 +71,7 @@ _get_remote_branch_status() {
 }
 
 _find_branch_or_head() {
-        local hd0="${2-$(get_branch_name)}"
+        local hd0="${1-$(get_branch_name)}"
 
         while read -r hd1 br; do
                 if [ "$hd1" = "$hd0" ]; then
