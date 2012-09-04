@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt7
+Release: alt8
 
 BuildArch: noarch
 
@@ -52,6 +52,9 @@ Currently is used by the "etcgit" Alterator module.
 %_sbindir/*
 
 %changelog
+* Tue Sep 04 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt8
+- Fix the head/branch parameter passing (affects 'etcgit fetch').
+
 * Mon Sep 03 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt7
 - Extract the `etcgit` tool to the subpackage.
 
