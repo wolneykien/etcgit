@@ -461,6 +461,8 @@ _get_service_names_for_files() {
         rpm -qfl "$@" 2>/dev/null | \
         sed -n -e '/^\/etc\/init.d\/functions$/ d' \
                -e '/^\/etc\/rc.d\/init.d\/functions$/ d' \
+               -e '/^\/etc\/init.d\/alteratord$/ d' \
+               -e '/^\/etc\/rc.d\/init.d\/alteratord$/ d' \
                -e '/^\/etc\/init.d\/[^\/]\+$/ s/^.*\///p' \
                -e '/^\/etc\/rc.d\/init.d\/[^\/]\+$/ s/^.*\///p' | \
         uniq
