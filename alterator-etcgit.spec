@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt9
+Release: alt10
 
 BuildArch: noarch
 
@@ -52,6 +52,9 @@ Currently is used by the "etcgit" Alterator module.
 %_sbindir/*
 
 %changelog
+* Wed Sep 05 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt10
+- Fetch the remote branch before head comparison.
+
 * Wed Sep 05 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt9
 - Update/improve the independent service list.
 - Never select the 'alteratord' for restart by file.
