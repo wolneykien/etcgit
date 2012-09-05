@@ -53,6 +53,7 @@ Currently is used by the "etcgit" Alterator module.
 
 %changelog
 * Wed Sep 05 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt9
+- Never select the 'alteratord' for restart by file.
 - Fix the async branch reload.
 
 * Tue Sep 04 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt8
