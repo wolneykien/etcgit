@@ -385,7 +385,7 @@ _srv_is_independent() {
         fi
 
 	case "$srv" in
-		ahttpd|alteratord|plymouth|local|irqbalance|mdadm|random|udevd|udevd-final|fbsetfont|consolesaver|keytable|gpm)
+		ahttpd|alteratord|plymouth|local|irqbalance|mdadm|random|udevd|udevd-final|fbsetfont|consolesaver|keytable|gpm|dm|killall|mdadm|messagebus|multipathd|lvm2-monitor|outformat|rawdevices|sysstat|update_wms|x11presetdrv|smartd)
 			return 0
 			;;
 		*)
