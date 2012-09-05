@@ -4,12 +4,14 @@
     :use-module (alterator woo)
     :export (init))
 
-(define (do-reload)
+(define (do-reload branch)
   (session-delete (form-cookie "session"))
   (form-update-cookie "session" "")
   (catch/message
     (lambda ()
-      (woo-write "/etcgit/head"))))
+      (woo-write "/etcgit" 'branch branch))))
 
 (define (init)
-  (form-set-timeout do-reload 1))
+  (form-set-timeout (lambda ()
+                      (do-reload (form-value "branch")))
+                    1))

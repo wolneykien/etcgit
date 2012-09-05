@@ -79,7 +79,7 @@
     (if (member "ahttpd" srvs)
       (begin
         (form-warning (_ "The System management center service will be restarted. The current session will be closed now."))
-        (form-replace "/etcgit/restart"))
+        (form-replace "/etcgit/restart" 'branch (form-value "branch")))
       (do-reload))))
 
 (define (do-reload)
