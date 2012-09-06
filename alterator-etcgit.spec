@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt11
+Release: alt12
 
 BuildArch: noarch
 
@@ -52,6 +52,10 @@ Currently is used by the "etcgit" Alterator module.
 %_sbindir/*
 
 %changelog
+* Thu Sep 06 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt12
+- Add the 'checkout-meta' command for initial extract of the
+  auxiliary and metadata files.
+
 * Thu Sep 06 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt11
 - Clean untracked not ignored files after the checkout.
 
