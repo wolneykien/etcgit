@@ -458,7 +458,7 @@ _special_services() {
 		echo "network"
 		;;
 	esac
-    done | uniq
+    done | sort -u
 }
 
 _list_service_names_for_files() {
@@ -476,12 +476,13 @@ _list_service_names_for_files() {
 _get_service_names_for_files() {
         # TODO: Better service identification (i.e. is $f a service?)
         _list_service_names_for_files "$@" | \
-        uniq | \
+        sort -u | \
         while read -r f; do
                 [ "${f#.}" == "$f" ] || continue
                 [ -x "/etc/init.d/$f" ] || continue
                 echo "$f"
-        done
+        done | \
+        uniq
 }
 
 _filter_SK() {
@@ -494,15 +495,22 @@ list_modified() {
 	    -e 's,^.*$,/etc/&,'
 }
 
-list_modified_with_dirs() {
-	_list_modified "$@" | \
-        _step_path_dirs | \
-	sed -e 's/^[[:space:]]*[^[:space:]]\+[[:space:]]\+//' \
-	    -e 's,^.*$,/etc/&,'
+list_modified_files() {
+        _list_modified "$@" | \
+        while read -r status file; do
+                echo "/etc/$file"
+                [ -h "/etc/$file" ] && echo "/etc/${file%/*}/$(readlink "/etc/$file")"
+        done | \
+        sort -u
+}
+
+list_modified_files_and_dirs() {
+	list_modified_files "$@" | \
+        _step_path_dirs
 }
 
 list_kill_seq() {
-	local srvs="${1-$(_get_service_names_for_files $(list_modified_with_dirs "$@"))}"
+	local srvs="${1-$(_get_service_names_for_files $(list_modified_files_and_dirs "$@"))}"
 
 	for s in $srvs; do
                 list_kill_seq_for_srv "$s"
@@ -512,7 +520,7 @@ list_kill_seq() {
 }
 
 list_start_seq() {
-	local srvs="${1-$(_get_service_names_for_files $(list_modified_with_dirs "$@"))}"
+	local srvs="${1-$(_get_service_names_for_files $(list_modified_files_and_dirs "$@"))}"
 	local killseq="${2-}"
 
 	for s in $srvs; do
@@ -720,7 +728,7 @@ checkout_meta() {
 reload_branch() {
 	local br="${1-${in_branch-$(get_branch_name)}}"
 
-	local srvs="$(_get_service_names_for_files $(list_modified_with_dirs "$br"))"
+	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br"))"
 	local killseq="$(list_kill_seq "$srvs")"
 	local startseq="$(list_start_seq "$srvs" "$killseq")"
 	local ret=0
