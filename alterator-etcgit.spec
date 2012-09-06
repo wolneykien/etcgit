@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt10
+Release: alt11
 
 BuildArch: noarch
 
@@ -52,6 +52,9 @@ Currently is used by the "etcgit" Alterator module.
 %_sbindir/*
 
 %changelog
+* Thu Sep 06 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt11
+- Clean untracked not ignored files after the checkout.
+
 * Wed Sep 05 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt10
 - Fetch the remote branch before head comparison.
 
