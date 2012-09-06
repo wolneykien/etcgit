@@ -1,8 +1,11 @@
 #!/bin/sh
 
 LOCALDIR=.etcgit
+LOCALDIR_PAT='\.etcgit'
 PERMS=$LOCALDIR/file-permissions
+PERMS_PAT="$LOCALDIR_PAT/file-permissions"
 FILTERSDIR=$LOCALDIR/filters
+FILTERSDIR_PAT="$LOCALDIR_PAT/filters"
 PUBDIR=/srv/git/pub/etc.git
 
 _cd_init() {
@@ -547,8 +550,8 @@ list_commits() {
 
 _checkout_filters() {
         local br="$1"
-        local filters="$(git ls-files --with-tree "$br" -- $FILTERSDIR 2>/dev/null)"
-        local attrs="$(git ls-files --with-tree "$br" -- '*.gitattributes' 2>/dev/null)"
+        local filters="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- "^$FILTERSDIR_PAT")"
+        local attrs="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- '\.gitattributes')"
         local mask="$(umask)"
         local ret=0
 
@@ -557,7 +560,7 @@ _checkout_filters() {
                 git checkout --theirs $br -- $filters 1>/dev/null 2>&1
                 ret=$?
                 if [ $ret -eq 0 ]; then
-                        if [ -n "$(git ls-files --with-tree="$br" $PERMS)" ]; then
+                        if [ -n "$(git ls-tree --name-only "$br" $PERMS)" ]; then
                                 git show "$br:$PERMS" | grep "^$LOCALDIR" | _apply_file_permissions
                                 ret=$?
                         fi
@@ -570,7 +573,7 @@ _checkout_filters() {
                         git checkout --theirs $br -- $attrs
                         ret=$?
                         if [ $ret -eq 0 ]; then
-                                if [ -n "$(git ls-files --with-tree="$br" $PERMS)" ]; then
+                                if [ -n "$(git ls-tree --name-only "$br" $PERMS)" ]; then
                                         git show "$br:$PERMS" | grep '\.gitattributes' | _apply_file_permissions
                                         ret=$?
                                 fi
@@ -584,7 +587,7 @@ _checkout_filters() {
 
 _checkout_blacklist() {
         local br="$1"
-        local blacklist="$(git ls-files --with-tree "$br" -- '*.gitignore' 2>/dev/null)"
+        local blacklist="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- '\.gitignore')"
         local mask="$(umask)"
         local ret=0
 
@@ -593,7 +596,7 @@ _checkout_blacklist() {
                 git checkout --theirs $br -- $blacklist 1>/dev/null 2>&1
                 ret=$?
                 if [ $ret -eq 0 ]; then
-                        if [ -n "$(git ls-files --with-tree="$br" $PERMS)" ]; then
+                        if [ -n "$(git ls-tree --name-only "$br" $PERMS)" ]; then
                                 git show "$br:$PERMS" | grep '\.gitignore' | _apply_file_permissions
                                 ret=$?
                         fi
@@ -610,7 +613,7 @@ _checkout_perms() {
         local ret=0
 
         umask 0027
-        if [ -n "$(git ls-files --with-tree="$br" $PERMS)" ]; then
+        if [ -n "$(git ls-tree --name-only "$br" $PERMS)" ]; then
                 git checkout --theirs $br -- $PERMS 1>/dev/null 2>&1
                 ret=$?
                 if [ $ret -eq 0 ]; then
@@ -633,15 +636,15 @@ _setup_branch_filters() {
 _restore_filters() {
         local attrs=
 
-        attrs="$(git ls-files -- '*.gitattributes')"
+        attrs="$(git ls-files -oc -- '*.gitattributes')"
         [ -n "$attrs" ] && rm -f $attrs
 
-        attrs="$(git ls-files -- '*.gitattributes')"
+        attrs="$(git ls-tree -r --name-only HEAD 2>/dev/null | grep -- '\.gitattributes')"
         [ -n "$attrs" ] && git checkout --ours HEAD -- $attrs
 
         rm -rf $FILTERSDIR
-        if [ -n "$(git ls-files HEAD -- $FILTERSDIR 2>/dev/null)" ]; then
-                git checkout HEAD -- $FILTERSDIR 1>/dev/null 2>&1 || return $?
+        if [ -n "$(git ls-tree -r --name-only HEAD 2>/dev/null | grep -- "^$FILTERSDIR_PAT")" ]; then
+                git checkout --ours HEAD -- $FILTERSDIR 1>/dev/null 2>&1 || return $?
                 _setup_filters
         fi
 }
@@ -653,6 +656,8 @@ _checkout_meta() {
         _setup_branch_filters "$br"
         _checkout_blacklist "$br"
         _checkout_perms "$br"
+
+        return 0
 }
 
 _checkout_branch() {
@@ -806,8 +811,12 @@ _get_default_message() {
 _add_filters_to_index() {
         local br="$1"
         [ -n "$br" ] || return 0
-        local filters="$(git ls-files --with-tree "$br" -- $FILTERSDIR 2>/dev/null)"
-        local attrs="$(git ls-files --with-tree "$br" -- '*.gitattributes')"
+
+        _setup_branch_filters "$br" || return $?
+
+        local filters="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- "^$FILTERSDIR_PAT")"
+        local attrs="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- '\.gitattributes')"
+        local ret=0
 
         if [ -n "$filters" ]; then
                 git add -f $filters 1>/dev/null 2>&1
@@ -838,9 +847,6 @@ _commit_tree() {
                                 git reset $nbr 1>/dev/null 2>&1 || ret=1
                         fi
                         if [ -z "$br" ]; then
-                                if [ $ret -eq 0 ]; then
-                                        _setup_branch_filters "$nbr" || ret=1
-                                fi
                                 if [ $ret -eq 0 ]; then
                                         _add_filters_to_index "$nbr" || ret=3
                                 fi
