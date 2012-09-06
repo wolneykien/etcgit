@@ -553,7 +553,7 @@ _checkout_filters() {
         local filters="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- "^$FILTERSDIR_PAT")"
         local attrs="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- '\.gitattributes')"
         local mask="$(umask)"
-        local ret=0
+        local ret=1
 
         umask 0027
         if [ -n "$filters" ]; then
@@ -630,7 +630,11 @@ _setup_branch_filters() {
         local br="$1"
         [ -n "$br" ] || return 0
 
-        _checkout_filters "$br" && _setup_filters
+        if _checkout_filters "$br"; then
+                _setup_filters
+        else
+                return 0
+        fi
 }
 
 _restore_filters() {
