@@ -837,36 +837,43 @@ _add_filters_to_index() {
 
 _commit_tree() {
         local msg="${1-$(_get_default_message)}"
-        local nbr="${2-$(_get_branch_name)}"
-        local br="$(_get_branch_name)"
+        local bbr="${2-$(_get_branch_name)}"
+        local nbr="${3-$(_get_branch_name)}"
+        local cbr="$(_get_branch_name)"
+        local obr="$cbr"
         local ret=0
 
-        if [ -z "$br" ] && [ -z "$nbr" ]; then
+        if [ -z "$cbr" ] && [ -z "$nbr" ]; then
                 nbr="master"
         fi
-        if [ -n "$nbr" ] && [ "$nbr" != "$br" ]; then
-                if git branch | grep -wq "$nbr"; then
-                        git symbolic-ref HEAD "refs/heads/$nbr" 1>/dev/null 2>&1 || ret=1
-                        if [ $ret -eq 0 ]; then
-                                git reset $nbr 1>/dev/null 2>&1 || ret=1
-                        fi
-                        if [ -z "$br" ]; then
-                                if [ $ret -eq 0 ]; then
-                                        _add_filters_to_index "$nbr" || ret=3
-                                fi
-                        fi
-                else
-                        git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
+
+        if [ -n "$bbr" ] && [ "$cbr" != "$bbr" ]; then
+                git symbolic-ref HEAD "refs/heads/$bbr" 1>/dev/null 2>&1 || ret=1
+                if [ $ret -eq 0 ]; then
+                        git reset $bbr 1>/dev/null 2>&1 || ret=1
                 fi
-                br="$nbr"
+                cbr="$bbr"
         fi
-        if [ $ret -eq 0 ]; then
-                if [ -e .gitignore ]; then
-                        git add . 1>/dev/null 2>&1 || ret=3
-                else
-                        ret=2
-                fi
+        [ $ret -eq 0 ] || return $ret
+
+        if [ -n "$nbr" ] && [ -n "$cbr" ] && [ "$nbr" != "$cbr" ]; then
+                git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
+                cbr="$nbr"
         fi
+        [ $ret -eq 0 ] || return $ret
+
+        if [ -z "$obr" ]; then
+                _add_filters_to_index "$bbr" || ret=3
+        fi
+        [ $ret -eq 0 ] || return $ret
+
+        if [ -e .gitignore ]; then
+                git add . 1>/dev/null 2>&1 || ret=3
+        else
+                ret=2
+        fi
+        [ $ret -eq 0 ] || return $ret
+
         if [ $ret -eq 0 ]; then
                 touch $PERMS
                 git add -f $PERMS 1>/dev/null 2>&1 || ret=3
@@ -881,14 +888,13 @@ _commit_tree() {
                 git commit -a -m "$msg" 1>/dev/null 2>&1 || ret=5
         fi
         if [ $ret -eq 0 ]; then
-                if [ -z "$br" ] && [ -n "$nbr" ]; then
+                if [ -n "$nbr" ]; then
                         git branch -M "$(_get_branch_name)" "$nbr" 1>/dev/null 2>&1 || ret=1
-                        br="$nbr"
                 fi
         fi
 
         if [ $ret -eq 0 ]; then
-                _publish_branch "$br" || ret=6
+                _publish_branch || ret=6
         fi
 
         return $ret
@@ -960,12 +966,13 @@ delete_pubdir() {
 
 commit_tree() {
         local msg="${1-$in_msg}"
-        local br="${2-${in_branch-$(get_branch_name)}}"
+        local bbr="${2-${in_base-$(get_branch_name)}}"
+        local nbr="${3-${in_branch-}}"
         local ret=
 
         (
 	        _cd_if_git /etc || return 0
-                _commit_tree "$msg" "$br"
+                _commit_tree "$msg" "$bbr" "$nbr"
                 ret=$?
                 case $ret in
                         1)

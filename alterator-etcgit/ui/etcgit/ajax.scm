@@ -123,8 +123,8 @@
         (catch/message
           (lambda ()
             (if branch
-                (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch branch)
-                (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch (form-value "branch")))))
+                (woo-write "/etcgit/head" 'commit #t 'msg msg 'branch branch 'base (form-value "branch"))
+                (woo-write "/etcgit/head" 'commit #t 'msg msg 'base (form-value "branch")))))
         (read-repo)
         (read-files)))))
 
