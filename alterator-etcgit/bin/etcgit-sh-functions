@@ -502,7 +502,7 @@ list_modified_with_dirs() {
 }
 
 list_kill_seq() {
-	local srvs="${1-$(_get_service_names_for_files $(list_modified_with_dirs))}"
+	local srvs="${1-$(_get_service_names_for_files $(list_modified_with_dirs "$@"))}"
 
 	for s in $srvs; do
                 list_kill_seq_for_srv "$s"
@@ -512,7 +512,7 @@ list_kill_seq() {
 }
 
 list_start_seq() {
-	local srvs="${1-$(_get_service_names_for_files $(list_modified_with_dirs))}"
+	local srvs="${1-$(_get_service_names_for_files $(list_modified_with_dirs "$@"))}"
 	local killseq="${2-}"
 
 	for s in $srvs; do
