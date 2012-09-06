@@ -578,6 +578,43 @@ _checkout_filters() {
         return $ret
 }
 
+_checkout_blacklist() {
+        local br="$1"
+        local blacklist="$(git ls-files --with-tree "$br" -- '*.gitignore' 2>/dev/null)"
+        local mask="$(umask)"
+        local ret=1
+
+        umask 0027
+        if [ -n "$blacklist" ]; then
+                git checkout --theirs $br -- $blacklist 1>/dev/null 2>&1
+                ret=$?
+                if [ $ret -eq 0 ]; then
+                        git show "$br:$PERMS" | grep '\.gitignore' | _apply_file_permissions
+                        ret=$?
+                fi
+        fi
+        umask $mask 1>/dev/null 2>&1
+
+        return $ret
+}
+
+_checkout_perms() {
+        local br="$1"
+        local mask="$(umask)"
+        local ret=1
+
+        umask 0027
+        git checkout --theirs $br -- $PERMS 1>/dev/null 2>&1
+        ret=$?
+        if [ $ret -eq 0 ]; then
+                git show "$br:$PERMS" | grep "$PERMS" | _apply_file_permissions
+                ret=$?
+        fi
+        umask $mask 1>/dev/null 2>&1
+
+        return $ret
+}
+
 _setup_branch_filters() {
         local br="$1"
         [ -n "$br" ] || return 0
@@ -599,6 +636,15 @@ _restore_filters() {
                 git checkout HEAD -- $FILTERSDIR 1>/dev/null 2>&1 || return $?
                 _setup_filters
         fi
+}
+
+_checkout_meta() {
+        local br="$1"
+        [ -n "$br" ] || return 0
+
+        _setup_branch_filters "$br"
+        _checkout_blacklist "$br"
+        _checkout_perms "$br"
 }
 
 _checkout_branch() {
@@ -633,6 +679,14 @@ checkout_branch() {
 	(
 		_cd_init /etc || return 1
 		_checkout_branch "$br"
+	)
+}
+
+checkout_meta() {
+	local br="${1-${in_branch-$(get_branch_name)}}"
+	(
+		_cd_init /etc || return 1
+		_checkout_meta "$br"
 	)
 }
 
