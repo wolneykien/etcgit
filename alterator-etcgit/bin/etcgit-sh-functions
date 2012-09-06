@@ -461,7 +461,7 @@ _special_services() {
     done | uniq
 }
 
-_get_service_names_for_files() {
+_list_service_names_for_files() {
 	[ -n "$*" ] || return 0
         rpm -qfl "$@" 2>/dev/null | \
         sed -n -e '/^\/etc\/init.d\/functions$/ d' \
@@ -469,9 +469,19 @@ _get_service_names_for_files() {
                -e '/^\/etc\/init.d\/alteratord$/ d' \
                -e '/^\/etc\/rc.d\/init.d\/alteratord$/ d' \
                -e '/^\/etc\/init.d\/[^\/]\+$/ s/^.*\///p' \
-               -e '/^\/etc\/rc.d\/init.d\/[^\/]\+$/ s/^.*\///p' | \
-        uniq
+               -e '/^\/etc\/rc.d\/init.d\/[^\/]\+$/ s/^.*\///p'
 	_special_services "$@"
+}
+
+_get_service_names_for_files() {
+        # TODO: Better service identification (i.e. is $f a service?)
+        _list_service_names_for_files "$@" | \
+        uniq | \
+        while read -r f; do
+                [ "${f#.}" == "$f" ] || continue
+                [ -x "/etc/init.d/$f" ] || continue
+                echo "$f"
+        done
 }
 
 _filter_SK() {
