@@ -479,13 +479,13 @@ _filter_SK() {
 }
 
 list_modified() {
-	_list_modified | \
+	_list_modified "$@" | \
 	sed -e 's/^[[:space:]]*[^[:space:]]\+[[:space:]]\+//' \
 	    -e 's,^.*$,/etc/&,'
 }
 
 list_modified_with_dirs() {
-	_list_modified | \
+	_list_modified "$@" | \
         _step_path_dirs | \
 	sed -e 's/^[[:space:]]*[^[:space:]]\+[[:space:]]\+//' \
 	    -e 's,^.*$,/etc/&,'
