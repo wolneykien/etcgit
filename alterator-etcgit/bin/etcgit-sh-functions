@@ -550,15 +550,17 @@ _checkout_filters() {
         local filters="$(git ls-files --with-tree "$br" -- $FILTERSDIR 2>/dev/null)"
         local attrs="$(git ls-files --with-tree "$br" -- '*.gitattributes' 2>/dev/null)"
         local mask="$(umask)"
-        local ret=1
+        local ret=0
 
         umask 0027
         if [ -n "$filters" ]; then
                 git checkout --theirs $br -- $filters 1>/dev/null 2>&1
                 ret=$?
                 if [ $ret -eq 0 ]; then
-                        git show "$br:$PERMS" | grep "^$LOCALDIR" | _apply_file_permissions
-                        ret=$?
+                        if [ -n "$(git ls-files --with-tree="$br" $PERMS)" ]; then
+                                git show "$br:$PERMS" | grep "^$LOCALDIR" | _apply_file_permissions
+                                ret=$?
+                        fi
                 fi
         fi
 
@@ -568,8 +570,10 @@ _checkout_filters() {
                         git checkout --theirs $br -- $attrs
                         ret=$?
                         if [ $ret -eq 0 ]; then
-                                git show "$br:$PERMS" | grep '\.gitattributes' | _apply_file_permissions
-                                ret=$?
+                                if [ -n "$(git ls-files --with-tree="$br" $PERMS)" ]; then
+                                        git show "$br:$PERMS" | grep '\.gitattributes' | _apply_file_permissions
+                                        ret=$?
+                                fi
                         fi
                 fi
         fi
@@ -582,15 +586,17 @@ _checkout_blacklist() {
         local br="$1"
         local blacklist="$(git ls-files --with-tree "$br" -- '*.gitignore' 2>/dev/null)"
         local mask="$(umask)"
-        local ret=1
+        local ret=0
 
         umask 0027
         if [ -n "$blacklist" ]; then
                 git checkout --theirs $br -- $blacklist 1>/dev/null 2>&1
                 ret=$?
                 if [ $ret -eq 0 ]; then
-                        git show "$br:$PERMS" | grep '\.gitignore' | _apply_file_permissions
-                        ret=$?
+                        if [ -n "$(git ls-files --with-tree="$br" $PERMS)" ]; then
+                                git show "$br:$PERMS" | grep '\.gitignore' | _apply_file_permissions
+                                ret=$?
+                        fi
                 fi
         fi
         umask $mask 1>/dev/null 2>&1
@@ -601,14 +607,16 @@ _checkout_blacklist() {
 _checkout_perms() {
         local br="$1"
         local mask="$(umask)"
-        local ret=1
+        local ret=0
 
         umask 0027
-        git checkout --theirs $br -- $PERMS 1>/dev/null 2>&1
-        ret=$?
-        if [ $ret -eq 0 ]; then
-                git show "$br:$PERMS" | grep "$PERMS" | _apply_file_permissions
+        if [ -n "$(git ls-files --with-tree="$br" $PERMS)" ]; then
+                git checkout --theirs $br -- $PERMS 1>/dev/null 2>&1
                 ret=$?
+                if [ $ret -eq 0 ]; then
+                        git show "$br:$PERMS" | grep "$PERMS" | _apply_file_permissions
+                        ret=$?
+                fi
         fi
         umask $mask 1>/dev/null 2>&1
 
