@@ -909,11 +909,11 @@ _publish_branch() {
                 lo|fr)
                         git push $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
                         ;;
-                ff)
-                        git push --force $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
-                        ;;
                 nw|un)
                         git push $PUBDIR ":$br" 1>/dev/null 2>&1 || return 5
+                        ;;
+                *)
+                        git push --force $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
                         ;;
         esac
 }
