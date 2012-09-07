@@ -413,14 +413,17 @@ list_kill_seq_for_srv() {
         local rcd=/etc/rc.d/rc6.d
         [ -d "$rcd" ] || return 2
         local klist="$(_list_K "$rcd")"
-        local ksrvlist="$(for f in $klist; do ksrv="$(_get_linked_srv "$rcd/$f")"; echo "$ksrv"; [ "$ksrv" != "$srvname" ] || break; done)"
+#        local ksrvlist="$(for f in $klist; do ksrv="$(_get_linked_srv "$rcd/$f")"; echo "$ksrv"; [ "$ksrv" != "$srvname" ] || break; done)"
 
 	local ksrvname=
         for f in $klist; do
 		ksrvname="$(_get_linked_srv "$rcd/$f")"
-		[ "$ksrvname" != "$srvname" ] && _srv_is_independent "$ksrvname" $ksrvlist && continue
-                echo "$f"
-                [ "$ksrvname" != "$srvname" ] || break
+#		[ "$ksrvname" != "$srvname" ] && _srv_is_independent "$ksrvname" $ksrvlist && continue
+#                echo "$f"
+#                [ "$ksrvname" != "$srvname" ] || break
+                if [ "$ksrvname" = "$srvname" ]; then
+                        echo "$f"
+                fi
         done
 }
 
