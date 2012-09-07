@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt13
+Release: alt14
 
 BuildArch: noarch
 
@@ -52,6 +52,17 @@ Currently is used by the "etcgit" Alterator module.
 %_sbindir/*
 
 %changelog
+* Fri Sep 07 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt14
+- Always list the local branches and thier publication status.
+- Do not try to calculate inter-service dependencies (buggy).
+- Restart the service when its runlevel settings changes.
+- Fix more: pass on the list-modified parameters.
+- Fix: try to filter out all non-service /etc/init.d files.
+- Fix forced branch publication.
+- Fix: commit changes using base and new branch parameter pair.
+- Fix error handling in the filter checkout/setup procs.
+- Fix: use `git ls-tree` instead of `git ls-files`.
+
 * Thu Sep 06 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt13
 - Check/ignore some errors during file checkouts.
 
