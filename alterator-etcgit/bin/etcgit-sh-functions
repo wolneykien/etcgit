@@ -245,7 +245,11 @@ _print_branch_info() {
                         rhd=$(_get_remote_branch_head "$url" "$br")
                 fi
                 [ -n "$rhd" ] || rhd=0
-                printf '%s\t%s\t%s\t%s\t%s\n' $br $rhd $lhd $(_get_remote_branch_status "$url" "$br") $(_get_remote_branch_status $PUBDIR "$br")
+                if [ -n "$url" ]; then
+                        printf '%s\t%s\t%s\t%s\t%s\n' $br $rhd $lhd $(_get_remote_branch_status "$url" "$br") $(_get_remote_branch_status $PUBDIR "$br")
+                else
+                        printf '%s\t%s\t%s\t%s\t%s\n' $br $rhd $lhd 'nw' $(_get_remote_branch_status $PUBDIR "$br")
+                fi
         else
                 return 1
         fi
@@ -272,7 +276,7 @@ _list_all_branches() {
 
         (
                 git show-ref --heads | sed -n -e 's,^[0-9a-f]\+[[:space:]]\+refs/heads/,,p'
-                git ls-remote --heads "$url" | sed -n -e 's,^[0-9a-f]\+[[:space:]]\+refs/heads/,,p'
+                [ -n "$url" ] && git ls-remote --heads "$url" 2>/dev/null | sed -n -e 's,^[0-9a-f]\+[[:space:]]\+refs/heads/,,p'
         ) | sort -u | \
                 while read br; do
                         _print_branch_info "$url" "$br"

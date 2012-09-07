@@ -57,13 +57,12 @@
 
 (define (read-branches)
   (let ((url (form-value "url")))
-    (if (and url (not (string-null? url)))
-      (catch/message
-        (lambda ()
-          (form-update-enum "branches" (map (lambda (row)
-                                              (format-row row format-branch))
-                                            (woo-list "/etcgit/branches" 'url url)))
-          (form-bind "branches" "change" update-buttons))))))
+    (catch/message
+      (lambda ()
+        (form-update-enum "branches" (map (lambda (row)
+                                            (format-row row format-branch))
+                                          (woo-list "/etcgit/branches" 'url url)))
+        (form-bind "branches" "change" update-buttons)))))
 
 (define (read-publication)
   (catch/message
