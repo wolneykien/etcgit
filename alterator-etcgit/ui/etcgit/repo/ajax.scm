@@ -59,10 +59,25 @@
   (let ((url (form-value "url")))
     (catch/message
       (lambda ()
-        (form-update-enum "branches" (map (lambda (row)
-                                            (format-row row format-branch))
-                                          (woo-list "/etcgit/branches" 'url url)))
-        (form-bind "branches" "change" update-buttons)))))
+        (let* ((branches (woo-list "/etcgit/branches" 'url url))
+               (remote-branches (filter (lambda (row)
+                                          (let ((remote-head (plistq 'remote_head (if (plist? row) row (cdr row)))))
+                                            (and remote-head
+                                                 (not (string-null? (cdr remote-head)))
+                                                 (not (equal? "0" (cdr remote-head))))))
+                                        branches))
+               (has-remotes (not (null? remote-branches))))
+          (form-update-enum "branches" (map (lambda (row)
+                                              (format-row row format-branch))
+                                            branches))
+          (form-update-activity "update-all" has-remotes)
+          (form-update-activity "update-selected" has-remotes)
+          (form-update-value "fetch-result" (if has-remotes
+                                              (_ "Successfully fetched the profile list")
+                                              (_ "No profiles are published at the given URL")))
+          (if (not has-remotes)
+            (form-warning (_ "Unable to fetch profiles from the given URL")))
+          (form-bind "branches" "change" update-buttons))))))
 
 (define (read-publication)
   (catch/message
@@ -131,6 +146,7 @@
 
 (define (init)
   (form-bind "fetch" "click" read-branches)
+  (form-bind "url" "enter" read-branches)
   (form-bind "publication-status" "change" write-publication-status)
   (form-bind "update-all" "click" fetch-all-branches)
   (form-bind "update-selected" "click" fetch-selected-branches)
