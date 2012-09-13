@@ -19,4 +19,4 @@ install-bin:
 install-etc: install-etckeeper
 
 install-etckeeper:
-	cd etc; for f in `find etckeeper/ -type f`; do install -D -m0755 $$f $(sysconfdir)/$$f`; done
+	cd etc; for f in `find etckeeper/ -type f`; do install -D -m0755 $$f $(sysconfdir)/$$f; done
