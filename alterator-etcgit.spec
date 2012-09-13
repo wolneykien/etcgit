@@ -50,6 +50,7 @@ Currently is used by the "etcgit" Alterator module.
 %files -n etcgit
 %_bindir/*
 %_sbindir/*
+%_sysconfdir/etckeeper/*/*
 
 %changelog
 * Fri Sep 07 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt14

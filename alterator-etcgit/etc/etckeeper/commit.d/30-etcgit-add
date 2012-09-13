@@ -1,0 +1,8 @@
+#!/bin/sh -uf
+
+. /usr/bin/etcgit-sh-functions
+
+(
+        _cd_if_git /etc || exit 0
+        [ -e $PERMS ] && git add -f $PERMS
+)
