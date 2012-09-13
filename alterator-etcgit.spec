@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt14
+Release: alt15
 
 BuildArch: noarch
 
@@ -53,6 +53,10 @@ Currently is used by the "etcgit" Alterator module.
 %_sysconfdir/etckeeper/*/*
 
 %changelog
+* Thu Sep 13 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt15
+- Add update, add and publish scripts for etckeeper.
+- Improve the remote repo handling.
+
 * Fri Sep 07 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt14
 - Always list the local branches and thier publication status.
 - Do not try to calculate inter-service dependencies (buggy).
