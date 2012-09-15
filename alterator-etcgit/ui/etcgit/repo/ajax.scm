@@ -55,8 +55,7 @@
       ((un) (list 'class "D"))
       (else '()))))
 
-(define (read-branches)
-  (let ((url (form-value "url")))
+(define (do-read-branches url)
     (catch/message
       (lambda ()
         (let* ((branches (woo-list "/etcgit/branches" 'url url))
@@ -75,9 +74,12 @@
           (form-update-value "fetch-result" (if has-remotes
                                               (_ "Successfully fetched the profile list")
                                               (_ "No profiles are published at the given URL")))
-          (if (not has-remotes)
+          (if (and url (not (string-null? url)) (not has-remotes))
             (form-warning (_ "Unable to fetch profiles from the given URL")))
-          (form-bind "branches" "change" update-buttons))))))
+          (form-bind "branches" "change" update-buttons)))))
+
+(define (read-branches)
+  (do-read-branches (form-value "url")))
 
 (define (read-publication)
   (catch/message
@@ -152,5 +154,5 @@
   (form-bind "update-selected" "click" fetch-selected-branches)
   (form-bind "delete-selected" "click" delete-selected-branches)
   (read-repo)
-  (read-branches)
+  (do-read-branches #f)
   (update-buttons))
