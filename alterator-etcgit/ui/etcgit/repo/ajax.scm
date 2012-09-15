@@ -51,7 +51,7 @@
       ((fr) (list 'class "A"))
       ((ff) (list 'class "M"))
       ((br) (list 'class "M"))
-      ((lo) (list 'class "D"))
+      ((lo) '())
       ((un) (list 'class "D"))
       (else '()))))
 
