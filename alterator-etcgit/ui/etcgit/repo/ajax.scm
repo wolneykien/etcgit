@@ -116,9 +116,12 @@
   (read-branches))
 
 (define (fetch-branch branch)
-  (catch/message
-    (lambda ()
-      (woo-write "/etcgit/branch" 'branch branch 'url (form-value "url")))))
+  (let ((branch branch)
+        (url (form-value "url")))
+    (if (and url (not (string-null? url)))
+      (catch/message
+        (lambda ()
+          (woo-write "/etcgit/branch" 'branch branch 'url url))))))
 
 (define (fetch-all-branches)
   (catch/message
