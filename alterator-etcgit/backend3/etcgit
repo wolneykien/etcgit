@@ -59,6 +59,9 @@ read_branch_name() {
 
 on_message()
 {
+        if [ "${in_url-}" = '#f' ]; then
+                in_url=
+        fi
 	case "$in_action" in
 		read)
 			case "$in__objects" in
