@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt15
+Release: alt16
 
 BuildArch: noarch
 
@@ -53,6 +53,13 @@ Currently is used by the "etcgit" Alterator module.
 %_sysconfdir/etckeeper/*/*
 
 %changelog
+* Sun Sep 16 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt16
+- Fix: do not try to fetch profile if no URL is given.
+- Interpret #f as the null URL.
+- Fix: do not output local only branches in red.
+- Fix: do not require the current repo URL to be valid on the
+  page load.
+
 * Thu Sep 13 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt15
 - Add update, add and publish scripts for etckeeper.
 - Improve the remote repo handling.
