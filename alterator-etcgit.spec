@@ -2,7 +2,7 @@
 
 Name: alterator-etcgit
 Version: 1.1
-Release: alt16
+Release: alt17
 
 BuildArch: noarch
 
@@ -53,6 +53,9 @@ Currently is used by the "etcgit" Alterator module.
 %_sysconfdir/etckeeper/*/*
 
 %changelog
+* Thu Oct 25 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt17
+- Use the X-Alterator-VCS category.
+
 * Sun Sep 16 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt16
 - Fix: do not try to fetch profile if no URL is given.
 - Interpret #f as the null URL.
