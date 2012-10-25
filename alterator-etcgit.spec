@@ -11,7 +11,7 @@ Source:%name-%version.tar
 Summary: Alterator module to control versions of configuration files in /etc using git
 License: GPL
 Group: System/Configuration/Other
-Requires: alterator >= 4.20-alt1.1
+Requires: alterator >= 4.22-alt2
 Requires: alterator-fbi >= 5.27-alt1
 Requires: git-server
 Conflicts: alterator >= 5.0

@@ -1,7 +1,7 @@
 [Desktop Entry]
 Encoding=UTF-8
 Type=Application
-Categories=X-Alterator-Monitoring-Control
+Categories=X-Alterator-VCS
 Icon=etcgit
 Terminal=false
 Name=Configuration profiles
