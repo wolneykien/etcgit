@@ -24,6 +24,14 @@ else
                                 echo "$(get_branch_head)"
                         fi
                         ;;
+	        commit)
+		        if [ -n "${1:-}" ]; then
+		            commit_tree "$1" && echo "$(get_branch_head)"
+			else
+			    echo "Error: A commit message required" >&2
+			    exit 1
+			fi
+			;;
                 diff)
                         if [ $# -gt 0 ]; then
                                 get_diff "$1"
