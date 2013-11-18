@@ -245,8 +245,10 @@ _print_branch_info() {
                         rhd=$(_get_remote_branch_head "$url" "$br")
                 fi
                 [ -n "$rhd" ] || rhd=0
-                if [ -n "$url" ]; then
+                if [ -n "$url" ] && [ -d "$PUBDIR" ]; then
                         printf '%s\t%s\t%s\t%s\t%s\n' $br $rhd $lhd $(_get_remote_branch_status "$url" "$br") $(_get_remote_branch_status $PUBDIR "$br")
+		elif [ -n "$url" ]; then
+		    printf '%s\t%s\t%s\t%s\t%s\n' $br $rhd $lhd $(_get_remote_branch_status "$url" "$br") 'un'
                 else
                         printf '%s\t%s\t%s\t%s\t%s\n' $br $rhd $lhd 'nw' $(_get_remote_branch_status $PUBDIR "$br")
                 fi
