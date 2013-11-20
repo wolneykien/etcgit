@@ -82,16 +82,12 @@ All of the above operations are repository-management utils and do not
 mofify the contents of the configuration files under /etc. However,
 the following operations do that.
 
-  checkout [url] [commit|branch] Resets the configuration to the one
+  checkout [url] [commit|branch] Resets the configuration to the state
                       defined by the current head or the given
                       commit/branch optionally fetching it from the
-                      given URL.  May be called as \`checkout\`,
+                      given URL. The affected system services are
+                      restarted. May be called as \`checkout\`,
                       \`switch\` or \`reset\`.
-
-  checkout-meta [commit|branch] Checks out metadata (file permissions,
-                      filters and ignore lists) from the current head
-                      or the given commit/branch leaving their
-                      current content untouched.
 
 
 For additional usage information about a particular operation use
@@ -448,23 +444,41 @@ EOF
 }
 
 do_reset() {
-    local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
+    local OPTS=`getopt -n $PROG -o a,f,m,n,h -l async,force,meta-only,no-restart,help -- "$@"` || show_usage
     eval set -- "$OPTS"
     local force=
+    local async=
+    local norestart=
+    local metaonly=
     while :; do
 	case "$1" in
+	    -a|--async)
+		async="-a"
+		;;
 	    -f|--force)
 		force="-f"
 		;;
+	    -m|--meta-only)
+		metaonly="-m"
+		;;
+	    -n|--no-restart)
+		norestart="-n"
+		;;
 	    -h|--help)
 		cat <<EOF
-Usage: $PROG $CMD [-a|--async] [-f|--force] [url] [commit/branch]
+Usage: $PROG $CMD [options] [url] [commit/branch]
 
-$PROG $CMD resets the configuration to the one defined by the
+Options: [-a|--async] [-f|--force] [-m|--meta-only]
+         [-n|--no-restart]
+
+$PROG $CMD resets the configuration to the state defined by the
 current head or the given commit/branch optionally fetching it from
 the given URL. Is the -a option is passed the procedure is done
 asynchronously with the help of the \`at\` daemon. The -f option
-tells to forcily update the local branch with the same name. May be
+tells to forcily update the local branch with the same name. If the
+-n option is not given then the affected system services are stopped
+before checking out the configuration files and restarted after.
+However, with the -m option only the metadata is checked out. May be
 called as \`checkout\`, \`switch\` or \`reset\`.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
@@ -482,52 +496,31 @@ EOF
     done
 
     if [ -z "$async" ]; then
+	local url=
+	local br=
 	if [ $# -gt 1 ]; then
-	    in_force="$force" fetch_remote_branch "$1" "$2"
-            reload_branch "$2"
+	    url="$1"
+	    br="$2"
 	elif [ $# -gt 0 ]; then
-	    reload_branch "$1"
+	    br="$1"
+	fi
+	if [ -n "${url:-}" ] && [ -n "$br" ]; then
+	    in_force="$force" fetch_remote_branch "$url" "$br"
+	fi
+	if [ -n "$metaonly" ]; then
+	    checkout_meta ${br:+"$br"}
 	else
-	    reload_branch
+	    if [ -z "$norestart" ]; then
+		reload_branch ${br:+"$br"}
+	    else
+		checkout_branch ${br:+"$br"}
+	    fi
 	fi
     else
         cat <<EOF | at now 2>/dev/null
-$PROG $CMD ${force:+-f} "$@"
+$PROG $CMD ${force:+-f} ${norestart:+-n} ${metaonly:+-m} "$@"
 EOF
     fi
-}
-
-do_checkout_meta() {
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
-    eval set -- "$OPTS"
-    while :; do
-	case "$1" in
-	    -h|--help)
-		cat <<EOF
-Usage: $PROG $CMD [commit/branch]
-
-$PROG $CMD checkout metadata (file permissions, filters and ignore
-lists) from the current head or the given commit/branch leaving their
-current content untouched.
-
-Use \`$PROG --help\` for general information about $PROG's usage.
-
-EOF
-		exit
-		;;
-	    --) shift; break;;
-	    *)
-		echo "Unrecognized option: $1"
-		exit 1
-		;;
-	esac
-	shift
-    done    
-                        if [ $# -gt 0 ]; then
-                                hd="$1"
-                                br="$(local_branch_for_head "$hd")"
-                                checkout_meta "$br"
-                        fi
 }
 
 
@@ -591,9 +584,6 @@ else
             ;;
         switch|reset|checkout)
 	    do_reset "$@"
-            ;;
-        checkout-meta)
-	    do_checkout_meta
             ;;
 	*)
 	    echo "Unknown operation: $CMD. See \`$PROG --help\` for the usage information."
