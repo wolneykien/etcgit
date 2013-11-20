@@ -72,7 +72,8 @@ Commands:
                       current head or the specified commit/branch.
 
   fetch url [branch]  Fetches the specified or all branches from the
-                      given URL.
+                      given URL. May be called as \`fetch\` or
+                      \`update\`.
 
   delete branch       Deletes the specified branch.
 
@@ -81,10 +82,11 @@ All of the above operations are repository-management utils and do not
 mofify the contents of the configuration files under /etc. However,
 the following operations do that.
 
-  reset [url] [commit|branch] Resets the configuration to the one
+  checkout [url] [commit|branch] Resets the configuration to the one
                       defined by the current head or the given
                       commit/branch optionally fetching it from the
-                      given URL.
+                      given URL.  May be called as \`checkout\`,
+                      \`switch\` or \`reset\`.
 
   checkout-meta [commit|branch] Checks out metadata (file permissions,
                       filters and ignore lists) from the current head
@@ -376,7 +378,8 @@ Usage: $PROG $CMD [-f|--force] url [branch]
 $PROG $CMD fetches the specified or all branches from the given URL.
 The local branches with the same names are updated (FF) if possible.
 Otherwise they need to be explicitly deleted first (see the \`delete\`
-operation) or the -f option should be passed.
+operation) or the -f option should be passed. May be called as
+\`fetch\` or \`update\`.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -461,7 +464,8 @@ $PROG $CMD resets the configuration to the one defined by the
 current head or the given commit/branch optionally fetching it from
 the given URL. Is the -a option is passed the procedure is done
 asynchronously with the help of the \`at\` daemon. The -f option
-tells to forcily update the local branch with the same name.
+tells to forcily update the local branch with the same name. May be
+called as \`checkout\`, \`switch\` or \`reset\`.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -585,7 +589,7 @@ else
 	delete)
 	    do_delete "$@"
             ;;
-        switch|reset)
+        switch|reset|checkout)
 	    do_reset "$@"
             ;;
         checkout-meta)
