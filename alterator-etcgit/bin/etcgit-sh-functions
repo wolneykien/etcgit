@@ -1131,17 +1131,23 @@ get_public_url() {
 
 enable_publication() {
         local pubdir="${1:-$PUBDIR}"
-        init_pubdir
-        publish_repo
-        chkconfig git on
-        service xinetd reload 1>/dev/null 2>&1
-        touch "$pubdir/git-daemon-export-ok"
+        init_pubdir "$pubidr"
+        publish_repo "$pubdir"
+	if [ "$pubdir" != "$PUBDIR" ]; then
+	    disable_publication
+	else
+            chkconfig git on
+            service xinetd reload 1>/dev/null 2>&1
+            touch "$pubdir/git-daemon-export-ok"
+	fi
 }
 
 disable_publication() {
         local pubdir="${1:-$PUBDIR}"
 
-        [ -d "$pubdir" ] && rm -f "$pubdir/git-daemon-export-ok"
-        chkconfig git off
-        service xinetd reload 1>/dev/null 2>&1
+	if [ "$pubdir" = "$PUBDIR" ]; then
+            [ -d "$pubdir" ] && rm -f "$pubdir/git-daemon-export-ok"
+            chkconfig git off
+            service xinetd reload 1>/dev/null 2>&1
+	fi
 }
