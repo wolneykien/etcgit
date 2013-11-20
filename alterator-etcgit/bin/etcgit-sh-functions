@@ -986,67 +986,69 @@ _commit_tree() {
 }
 
 _publish_branch() {
-        [ -d $PUBDIR ] || return 0
+    local pubdir="${2:-$PUBDIR}"
+        [ -d "$pubdir" ] || return 0
         local br="${1-$(_get_branch_name)}"
         [ -n "$br" ] || return 1
 
-        case "$(_get_remote_branch_status $PUBDIR "$br")" in
+        case "$(_get_remote_branch_status "$pubdir" "$br")" in
                 lo|fr)
-                        git push $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
+                        git push "$pubdir" "$br" 1>/dev/null 2>&1 || return 4
                         ;;
                 nw|un)
-                        git push $PUBDIR ":$br" 1>/dev/null 2>&1 || return 5
+                        git push "$pubdir" ":$br" 1>/dev/null 2>&1 || return 5
                         ;;
                 *)
-                        git push --force $PUBDIR "$br" 1>/dev/null 2>&1 || return 4
+                        git push --force "$pubdir" "$br" 1>/dev/null 2>&1 || return 4
                         ;;
         esac
 }
 
 publish_branch() {
-        [ -d $PUBDIR ] || return 0
+    local pubdir="${2:-$PUBDIR}"
+        [ -d "$pubdir" ] || return 0
         local br="${1-${in_branch-$(get_branch_name)}}"
         [ -n "$br" ] || return 1
 
         (
                 _cd_if_git /etc || return 0
-                _publish_branch "$br"
+                _publish_branch "$br" "$pubdir"
         )
 }
 
 _publish_repo() {
-        [ -d $PUBDIR ] || return 0
+    local pubdir="${1:-$PUBDIR}"
+        [ -d "$pubdir" ] || return 0
         git show-ref --heads | sed -e 's,^[0-9a-z]\+[[:space:]]\+refs/heads/,,' | \
                 while read br; do
-                        _publish_branch "$br" || exit $?
+                        _publish_branch "$br" "$pubdir" || exit $?
                 done
 }
 
 publish_repo() {
-        [ -d $PUBDIR ] || return 0
+    local pubdir="${1:-$PUBDIR}"
+        [ -d "$pubdir" ] || return 0
         (
                 _cd_if_git /etc || return 0
-                _publish_repo
+                _publish_repo "$pubdir"
         )
 }
 
 init_pubdir() {
+    local pubdir="${1:-$PUBDIR}"
         local ret=0
-        if ! [ -d $PUBDIR ]; then
-                mkdir -p $PUBDIR
-                git init --bare $PUBDIR 1>/dev/null 2>&1
+        if ! [ -d "$pubdir" ]; then
+                mkdir -p "$pubdir"
+                git init --bare "$pubdir" 1>/dev/null 2>&1
                 ret=$?
         fi
 
         return $ret
 }
 
-get_pubdir() {
-        echo "$PUBDIR"
-}
-
 delete_pubdir() {
-        [ -d $PUBDIR ] && rm -rf $PUBDIR
+    local pubdir="${1:-$PUBDIR}"
+        [ -d "$pubdir" ] && rm -rf "$pubdir"
 }
 
 commit_tree() {
@@ -1098,4 +1100,48 @@ write_error() {
 write_error_message() {
 	local msg="$(printf "$@")"
 	write_error "$msg"
+}
+
+
+# Publication management funcs
+
+get_public_url() {
+        local pubdir="${1:-$PUBDIR}"
+        [ -n "$pubdir" ] || return 0
+        local defiface=$(ip r show | sed -n -e '/^default[[:space:]]/ { s/^.*[[:space:]]dev[[:space:]]\+\([^[:space:]]\+\).*$/\1/p; q }')
+        local defip=
+        local dnsname=
+        local addr=
+
+        if [ -n "$defiface" ]; then
+                defip=$(ip a show $defiface | sed -n -e '/^[[:space:]]*inet[[:space:]]/ { s,^[[:space:]]*inet[[:space:]]\+\([0-9.]\+\)/\([0-9]\+\).*$,\1,p; q }')
+                if [ -n "$defip" ]; then
+                        dnsname=$(host -v $defip | sed -n -e '/^;;[[:space:]]\+ANSWER SECTION:$/,$ { /[[:space:]]PTR[[:space:]]/ { s/^.*[[:space:]]PTR[[:space:]]\+\(.*\)\.$/\1/p; q } }')
+                        if [ -n "$dnsname" ]; then
+                                addr="$dnsname"
+                        else
+                                addr="$defip"
+                        fi
+                fi
+        fi
+        [ -n "$addr" ] || addr='127.0.0.1'
+
+        echo "git://$addr/${pubdir##*/}"
+}
+
+enable_publication() {
+        local pubdir="${1:-$PUBDIR}"
+        init_pubdir
+        publish_repo
+        chkconfig git on
+        service xinetd reload 1>/dev/null 2>&1
+        touch "$pubdir/git-daemon-export-ok"
+}
+
+disable_publication() {
+        local pubdir="${1:-$PUBDIR}"
+
+        [ -d "$pubdir" ] && rm -f "$pubdir/git-daemon-export-ok"
+        chkconfig git off
+        service xinetd reload 1>/dev/null 2>&1
 }

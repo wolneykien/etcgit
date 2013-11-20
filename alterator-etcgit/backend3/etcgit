@@ -6,47 +6,6 @@ po_domain="alterator-etcgit"
 . etcgit-sh-functions
 . alterator-sh-functions
 
-get_public_url() {
-        local pubdir="$(get_pubdir)"
-        [ -n "$pubdir" ] || return 0
-        local defiface=$(ip r show | sed -n -e '/^default[[:space:]]/ { s/^.*[[:space:]]dev[[:space:]]\+\([^[:space:]]\+\).*$/\1/p; q }')
-        local defip=
-        local dnsname=
-        local addr=
-
-        if [ -n "$defiface" ]; then
-                defip=$(ip a show $defiface | sed -n -e '/^[[:space:]]*inet[[:space:]]/ { s,^[[:space:]]*inet[[:space:]]\+\([0-9.]\+\)/\([0-9]\+\).*$,\1,p; q }')
-                if [ -n "$defip" ]; then
-                        dnsname=$(host -v $defip | sed -n -e '/^;;[[:space:]]\+ANSWER SECTION:$/,$ { /[[:space:]]PTR[[:space:]]/ { s/^.*[[:space:]]PTR[[:space:]]\+\(.*\)\.$/\1/p; q } }')
-                        if [ -n "$dnsname" ]; then
-                                addr="$dnsname"
-                        else
-                                addr="$defip"
-                        fi
-                fi
-        fi
-        [ -n "$addr" ] || addr='127.0.0.1'
-
-        echo "git://$addr/${pubdir##*/}"
-}
-
-enable_publication() {
-        local pubdir="$(get_pubdir)"
-        init_pubdir
-        publish_repo
-        chkconfig git on
-        service xinetd reload 1>/dev/null 2>&1
-        touch "$pubdir/git-daemon-export-ok"
-}
-
-disable_publication() {
-        local pubdir="$(get_pubdir)"
-
-        [ -d "$pubdir" ] && rm -f "$pubdir/git-daemon-export-ok"
-        chkconfig git off
-        service xinetd reload 1>/dev/null 2>&1
-}
-
 read_branch_name() {
         local br="$(get_branch_name)"
 
