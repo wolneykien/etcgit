@@ -1,4 +1,21 @@
 #!/bin/sh
+#
+# Copyright (C) 2012  Paul Wolneykien <manowar@altlinux.org>
+#
+# This file is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+#
 
 LOCALDIR=.etcgit
 LOCALDIR_PAT='\.etcgit'
@@ -122,13 +139,19 @@ _fetch_remote_branch() {
 
         [ -n "$url" ] && [ -n "$br" ] || return 1
 
-        case "$(_get_remote_branch_status "$url" "$br")" in
+	local status="$(_get_remote_branch_status "$url" "$br")"
+	if [ -n "${in_force:-}" ] && [ "$status" != 'un' ]; then
+	    status='fr'
+	else
+	    in_force=
+	fi
+        case "$status" in
                 nw|fr)
                         if [ "$br" != "$(_get_branch_name)" ]; then
-                                git fetch "$url" "$br:$br" 1>/dev/null 2>&1
+                                git fetch ${in_force:+-f} "$url" "$br:$br" 1>/dev/null 2>&1
                                 ret=$?
                         else
-                                git fetch "$url" "$br" 1>/dev/null 2>&1
+                                git fetch ${in_force:+-f} "$url" "$br" 1>/dev/null 2>&1
                                 ret=$?
                                 if [ $ret -eq 0 ]; then
                                         git reset $(_get_remote_branch_head "$url" "$br") 1>/dev/null 2>&1
