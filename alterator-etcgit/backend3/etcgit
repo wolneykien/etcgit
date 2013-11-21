@@ -3,8 +3,65 @@
 alterator_api_version=1
 po_domain="alterator-etcgit"
 
+PUBDIR=/srv/git/pub/etc.git
+
 . etcgit-sh-functions
 . alterator-sh-functions
+
+get_public_url() {
+        local pubdir="${1:-$PUBDIR}"
+        [ -n "$pubdir" ] || return 0
+        local defiface=$(ip r show | sed -n -e '/^default[[:space:]]/ { s/^.*[[:space:]]dev[[:space:]]\+\([^[:space:]]\+\).*$/\1/p; q }')
+        local defip=
+        local dnsname=
+        local addr=
+
+        if [ -n "$defiface" ]; then
+                defip=$(ip a show $defiface | sed -n -e '/^[[:space:]]*inet[[:space:]]/ { s,^[[:space:]]*inet[[:space:]]\+\([0-9.]\+\)/\([0-9]\+\).*$,\1,p; q }')
+                if [ -n "$defip" ]; then
+                        dnsname=$(host -v $defip | sed -n -e '/^;;[[:space:]]\+ANSWER SECTION:$/,$ { /[[:space:]]PTR[[:space:]]/ { s/^.*[[:space:]]PTR[[:space:]]\+\(.*\)\.$/\1/p; q } }')
+                        if [ -n "$dnsname" ]; then
+                                addr="$dnsname"
+                        else
+                                addr="$defip"
+                        fi
+                fi
+        fi
+        [ -n "$addr" ] || addr='127.0.0.1'
+
+        echo "git://$addr/${pubdir##*/}"
+}
+
+enable_publication() {
+        local pubdir="${1:-$PUBDIR}"
+
+	init_pubdir "$pubdir"
+        publish_repo "$pubdir"
+	if [ "$pubdir" != "$PUBDIR" ]; then
+	    disable_publication
+	else
+            chkconfig git on
+            service xinetd reload 1>/dev/null 2>&1
+            touch "$pubdir/git-daemon-export-ok"
+	fi
+}
+
+publication_enabled() {
+    local pubdir="${1:-$PUBDIR}"
+
+    [ -f "$pubdir/git-daemon-export-ok" ] && chkconfig git
+}
+
+disable_publication() {
+        local pubdir="${1:-$PUBDIR}"
+
+	if [ "$pubdir" = "$PUBDIR" ]; then
+            [ -d "$pubdir" ] && rm -f "$pubdir/git-daemon-export-ok"
+            service xinetd reload 1>/dev/null 2>&1
+	else
+	    rm -rf [ -d "$pubdir" ]
+	fi
+}
 
 read_branch_name() {
         local br="$(get_branch_name)"
@@ -47,7 +104,7 @@ on_message()
 					;;
                                 publication)
                                         write_string_param 'url' "$(get_public_url)"
-                                        if chkconfig git; then
+                                        if publication_enabled; then
                                                 write_bool_param 'status' 'on'
                                         else
                                                 write_bool_param 'status' 'off'
@@ -65,8 +122,10 @@ on_message()
 				head)
                                         if [ "$in_commit" = '#t' ]; then
                                                 commit_tree && write_string_param 'commit' "$(get_branch_head)"
+						publication_enabled && publish_branch
                                         elif [ -n "$in_commit" ]; then
                                                 reset_branch
+						publication_enabled && publish_branch
                                         fi
 					;;
                                 branch)
@@ -74,6 +133,7 @@ on_message()
                                                 fetch_remote_branch
                                         elif [ "${in_url-#t}" != "#t" ] && [ "${in_url:-#f}" = "#f" ]; then
                                                 delete_branch
+						publication_enabled && publish_branch
                                         fi
                                         ;;
                                 publication)

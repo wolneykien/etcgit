@@ -72,10 +72,15 @@ Commands:
                       current head or the specified commit/branch.
 
   fetch url [branch]  Fetches the specified or all branches from the
-                      given URL. May be called as \`fetch\` or
-                      \`update\`.
+                      given URL. May be called as \`update\`.
 
   delete branch       Deletes the specified branch.
+
+  publish url [branch] Pushes the repository or one given branch
+                      to an other repository at the specified URL.
+                      May be called as \`push\`.
+
+  unpublish url [branch] Deletes the copy published at the given URL.
 
 
 All of the above operations are repository-management utils and do not
@@ -86,8 +91,8 @@ the following operations do that.
                       defined by the current head or the given
                       commit/branch optionally fetching it from the
                       given URL. The affected system services are
-                      restarted. May be called as \`checkout\`,
-                      \`switch\` or \`reset\`.
+                      restarted. May be called as \`switch\` or
+                      \`reset\`.
 
 
 For additional usage information about a particular operation use
@@ -523,6 +528,84 @@ EOF
     fi
 }
 
+do_push() {
+    local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
+    local force=
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -f|--force)
+		force="-f"
+		;;
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [-f|--force] url [branch]
+
+$PROG $CMD pushes the repository or one given branch to an
+other repository at the specified URL. For force update use the
+-f option. May be called as \`publish\` or \`push\`.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 1 ]; then
+        in_force="$force" publish_branch "$1" "$2"
+    elif [ $# -gt 0 ]; then
+	in_force="$force" publish_repo "$1"
+    else
+	echo "Usage: $PROG $CMD [-f|--force] url [branch]"
+	exit 1
+    fi
+}
+
+do_unpublish() {
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local force=
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD url [branch]
+
+$PROG $CMD removes one named or all branches published at the
+given URL.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 1 ]; then
+        delete_remote_branch "$1" "$2"
+    elif [ $# -gt 0 ]; then
+	clear_remote_repo "$1"
+    else
+	echo "Usage: $PROG $CMD url [branch]"
+	exit 1
+    fi
+}
+
 
 OPTS=`getopt -n $PROG -o +q,v,V,h -l quiet,verbose,version,help -- "$@"` || show_usage
 eval set -- "$OPTS"
@@ -585,6 +668,12 @@ else
         switch|reset|checkout)
 	    do_reset "$@"
             ;;
+	push|publish)
+	    do_push "$@"
+	    ;;
+	unpublish)
+	    do_unpublish "$@";
+	    ;;
 	*)
 	    echo "Unknown operation: $CMD. See \`$PROG --help\` for the usage information."
 	    exit 1
