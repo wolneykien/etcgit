@@ -25,6 +25,7 @@ write_error() {
 
 PROG="${0##*/}"
 PROG_VERSION="1.1"
+SYSDEFAULTS="/usr/share/etcgit/defaults.git"
 
 show_help() {
     cat <<EOF
@@ -57,9 +58,9 @@ Commands:
                       the committed state  of the current or the
                       specified branch to the current state.
 
-  branch[es] [url]    Displays information about the current
-                      configuration branches or the branches at the
-                      given URL.
+  show [url] [branch] Displays information about the named or all
+                      configuration branches at the given URL or in
+                      the local repository.
 
   log [commit|branch] Displays the history list of the current or the
                       specified branch.
@@ -73,6 +74,9 @@ Commands:
 
   fetch url [branch]  Fetches the specified or all branches from the
                       given URL. May be called as \`update\`.
+
+  default [branch]    Fetches the specified or all branches from the
+                      system defaults repository.
 
   delete branch       Deletes the specified branch.
 
@@ -165,7 +169,7 @@ do_commit() {
 	case "$1" in
 	    -h|--help)
 		cat <<EOF
-Usage: $PROG $CMD message
+Usage: $PROG $CMD message [new-branch]
 
 $PROG $CMD commits the current state to the current or the specified
 new branch recording the supplied comment message.
@@ -190,7 +194,7 @@ EOF
     elif [ $# -gt 0 ]; then
 	commit_tree "$1" && echo "$(get_branch_head)"
     else
-	echo "Usage: $PROG $CMD message [branch]" >&2
+	echo "Usage: $PROG $CMD message [new-branch]" >&2
 	exit 1
     fi
 }
@@ -238,10 +242,10 @@ show_branches() {
 	case "$1" in
 	    -h|--help)
 		cat <<EOF
-Usage: $PROG $CMD [url]
+Usage: $PROG $CMD [url] [branch]
 
-$PROG $CMD Displays information about the current configuration
-branches or the branches at the given URL.
+$PROG $CMD Displays information about the named or all configuration
+branches at the given URL or in the local repository.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -257,7 +261,9 @@ EOF
 	shift
     done
 
-    if [ $# -gt 0 ]; then
+    if [ $# -gt 1 ]; then
+	_print_branch_info "$1" "$2"
+    elif [ $# -gt 0 ]; then
         list_remote_branches "$1"
     else
         list_local_branches
@@ -411,6 +417,59 @@ EOF
 	    esac
     else
 	echo "Usage: $PROG $CMD [-f|--force] url [branch]"
+	exit 1
+    fi
+}
+
+do_fetch_default() {
+    local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    local force=
+    while :; do
+	case "$1" in
+	    -f|--force)
+		force="-f"
+		;;
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [-f|--force] [branch]
+
+$PROG $CMD fetches the specified or all branches from the system
+defaults repository. The local branches with the same names are
+updated (FF) if possible. Otherwise they need to be explicitly deleted
+first (see the \`delete\` operation) or the -f option should be
+passed.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 0 ]; then
+        in_force="$force" fetch_remote_branch "$SYSDEFAULTS" "$2"
+    else
+	list_remote_branches "$SYSDEFAULTS" | \
+	  while read -r br rhd lhd st pst; do
+	    case "$st" in
+		nw|fr)
+		    fetch_remote_branch "$SYSDEFAULTS" "$br"
+		    ;;
+		ff|br)
+		    if [ -n "$force" ]; then
+			in_force="$force" fetch_remote_branch "$SYSDEFAULTS" "$br"
+		    fi
+	    esac
+    else
+	echo "Usage: $PROG $CMD [-f|--force] [branch]"
 	exit 1
     fi
 }
@@ -647,7 +706,7 @@ else
         diff)
 	    show_diff "$@"
 	    ;;
-	branch|branches)
+	show)
 	    show_branches
             ;;
         log)
@@ -661,6 +720,9 @@ else
             ;;
         fetch|update)
             do_fetch "$@"
+	    ;;
+	default)
+	    do_fetch_default "$@"
 	    ;;
 	delete)
 	    do_delete "$@"
