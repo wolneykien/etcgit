@@ -151,17 +151,25 @@ EOF
 	shift
     done
 
+    local hd=
     if [ $# -gt 0 ]; then
+	hd="$(get_branch_head "$1")"
 	if [ -n "$(_list_modified "$1")" ]; then
-            echo "$(get_branch_head "$1")+"
+            echo "$hd+"
 	else
-            echo "$(get_branch_head "$1")"
+            echo "$hd"
 	fi
     else
-	if [ -n "$(_list_modified)" ]; then
-            echo "$(get_branch_head)+"
+	hd="$(get_branch_head)"
+	if [ -n "$hd" ]; then
+	    if [ -n "$(_list_modified)" ]; then
+		echo "$hd+"
+	    else
+		echo "$hd"
+	    fi
 	else
-            echo "$(get_branch_head)"
+	    echo "Nothing was checked out yet" >&2
+	    return 2
 	fi
     fi
 }
@@ -713,7 +721,7 @@ show_brief() {
             return 0
 	fi
     else
-	echo "No commits yet" >&2
+	echo "Nothing was checked out yet" >&2
 	return 2
     fi
 }
