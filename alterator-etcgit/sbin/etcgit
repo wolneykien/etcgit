@@ -494,7 +494,7 @@ EOF
     done
 
     if [ $# -gt 0 ]; then
-        in_force="$force" fetch_remote_branch "$SYSDEFAULTS" "$2"
+        in_force="$force" fetch_remote_branch "$SYSDEFAULTS" "$1"
     else
 	list_remote_branches "$SYSDEFAULTS" | \
 	  while read -r br rhd lhd st pst; do
