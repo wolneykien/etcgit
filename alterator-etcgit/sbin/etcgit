@@ -82,6 +82,9 @@ Commands:
   default [branch]    Fetches the specified or all branches from the
                       system defaults repository.
 
+  reset commit|branch Resets the current head to the specified
+                      commit/branch.
+
   delete branch       Deletes the specified branch.
 
   publish url [branch] Pushes the repository or one given branch
@@ -99,8 +102,7 @@ the following operations do that.
                       defined by the current head or the given
                       commit/branch optionally fetching it from the
                       given URL. The affected system services are
-                      restarted. May be called as \`switch\` or
-                      \`reset\`.
+                      restarted. May be called as \`switch\`.
 
 
 For additional usage information about a particular operation use
@@ -519,6 +521,40 @@ EOF
     fi
 }
 
+do_reset() {
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    local force=
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD commit|branch
+
+$PROG $CMD resets the current head to the specified commit/branch.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 0 ]; then
+	reset_branch "$1"
+    else
+	echo "Usage: $PROG $CMD commit|branch"
+	exit 1
+    fi
+}
+
 do_delete() {
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
@@ -552,7 +588,7 @@ EOF
     fi
 }
 
-do_reset() {
+do_checkout() {
     local OPTS=`getopt -n $PROG -o a,f,m,n,h -l async,force,meta-only,no-restart,help -- "$@"` || show_usage
     eval set -- "$OPTS"
     local force=
@@ -588,7 +624,7 @@ tells to forcily update the local branch with the same name. If the
 -n option is not given then the affected system services are stopped
 before checking out the configuration files and restarted after.
 However, with the -m option only the metadata is checked out. May be
-called as \`checkout\`, \`switch\` or \`reset\`.
+called as \`checkout\` or \`switch\`.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -782,11 +818,14 @@ else
 	show-default)
 	    show_default_branches "$@"
 	    ;;
+	reset)
+	    do_reset "$@"
+	    ;;
 	delete)
 	    do_delete "$@"
             ;;
         switch|reset|checkout)
-	    do_reset "$@"
+	    do_checkout "$@"
             ;;
 	push|publish)
 	    do_push "$@"
