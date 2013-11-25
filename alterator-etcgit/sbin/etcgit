@@ -664,6 +664,22 @@ EOF
     fi
 }
 
+show_brief() {
+    local hd="$(get_branch_head)"
+    if [ -n "$hd" ]; then
+	if [ -n "$(_list_modified)" ]; then
+            echo -e "$hd+\\t$(get_branch_name)\\t$(get_head_message)"
+            return 1
+	else
+            echo -e "$hd\\t$(get_branch_name)\\t$(get_head_message)"
+            return 0
+	fi
+    else
+	echo "No commits yet" >&2
+	return 2
+    fi
+}
+
 
 OPTS=`getopt -n $PROG -o +q,v,V,h -l quiet,verbose,version,help -- "$@"` || show_usage
 eval set -- "$OPTS"
@@ -686,13 +702,7 @@ while :; do
 done
 
 if [ $# -eq 0 ]; then
-    if [ -n "$(_list_modified)" ]; then
-        echo -e "$(get_branch_head)+\\t$(get_branch_name)\\t$(get_head_message)"
-        exit 1
-    else
-        echo -e "$(get_branch_head)\\t$(get_branch_name)\\t$(get_head_message)"
-        exit 0
-    fi
+    show_brief "$@"
 else
     CMD="$1"; shift
     case "$CMD" in
