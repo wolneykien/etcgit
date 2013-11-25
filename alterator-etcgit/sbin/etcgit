@@ -29,7 +29,7 @@ SYSDEFAULTS="/usr/share/etcgit/defaults.git"
 
 show_help() {
     cat <<EOF
-Usage: $PROG [options] [[command] [args]]
+Usage: $PROG [options] [command [args]]
 
 $PROG controls the Git repository of configuration files under /etc.
 
@@ -415,6 +415,7 @@ EOF
 			in_force="$force" fetch_remote_branch "$1" "$br"
 		    fi
 	    esac
+	done
     else
 	echo "Usage: $PROG $CMD [-f|--force] url [branch]"
 	exit 1
@@ -468,9 +469,7 @@ EOF
 			in_force="$force" fetch_remote_branch "$SYSDEFAULTS" "$br"
 		    fi
 	    esac
-    else
-	echo "Usage: $PROG $CMD [-f|--force] [branch]"
-	exit 1
+	  done
     fi
 }
 
