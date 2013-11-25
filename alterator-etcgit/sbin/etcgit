@@ -62,6 +62,10 @@ Commands:
                       configuration branches at the given URL or in
                       the local repository.
 
+  show-default [branch] Displays information about the named or all
+                      configuration system default configuration
+                      branches.
+
   log [commit|branch] Displays the history list of the current or the
                       specified branch.
 
@@ -268,6 +272,40 @@ EOF
     else
         list_local_branches
     fi
+}
+
+
+show_default_branches() {
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [branch]
+
+$PROG $CMD Displays information about the named or all configuration
+system default configuration branches.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 0 ]; then
+	_print_branch_info "$SYSDEFAULTS" "$1"
+    else
+        list_remote_branches "$SYSDEFAULTS"
+     fi
 }
 
 show_commits() {
@@ -732,6 +770,9 @@ else
 	    ;;
 	default)
 	    do_fetch_default "$@"
+	    ;;
+	show-default)
+	    show_default_branches "$@"
 	    ;;
 	delete)
 	    do_delete "$@"
