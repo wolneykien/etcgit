@@ -341,7 +341,11 @@ _dump_file_permissions() {
 }
 
 _apply_file_permissions() {
-        eval "$(sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
+    local filter=
+    for f in "$@"; do
+	filter="$filter -e '/^$f / p'"
+    done
+        eval "$(sed -n ${filter:--e 'p'} | sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
 }
 
 _test_smudge() {
@@ -356,13 +360,17 @@ _test_smudge() {
 
 _list_modified() {
         local br="${1-${in_branch-$(get_branch_name)}}"
+
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
 	(
 		_cd_if_git /etc || return 0
                 [ -e .gitignore ] && git add . 1>/dev/null 2>&1
-                [ -n "$br" ] && _setup_branch_filters "$br"
-                _dump_file_permissions >$PERMS
+                [ -n "$br" ] && _setup_branch_filters "$br" "$@"
+                _dump_file_permissions "$@" >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
-                git diff --name-status $br 2>/dev/null | \
+                git diff --name-status "$br" ${1+-- "$@"} 2>/dev/null | \
                         while read status file; do
                                 if [ "$status" != 'M' ] || _test_smudge "$file" "$br"; then
                                         printf '%s\t%s\n' "$status" "$file"
@@ -577,7 +585,11 @@ list_modified_files_and_dirs() {
 
 list_kill_seq() {
         local br="${1-${in_branch-$(get_branch_name)}}"
-	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br"))"
+
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
+	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br" "$@"))"
 
 	for s in $srvs; do
                 list_kill_seq_for_srv "$s"
@@ -588,7 +600,11 @@ list_kill_seq() {
 
 list_start_seq() {
         local br="${1-${in_branch-$(get_branch_name)}}"
-	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br"))"
+
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
+	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br" "$@"))"
 
 	for s in $srvs; do
                 list_branch_start_seq_for_srv "$br" "$s"
@@ -635,6 +651,10 @@ list_commits() {
 
 _checkout_filters() {
         local br="$1"
+
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
         local filters="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- "^$FILTERSDIR_PAT")"
         local attrs="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- '\.gitattributes')"
         local mask="$(umask)"
@@ -646,7 +666,7 @@ _checkout_filters() {
                 ret=$?
                 if [ $ret -eq 0 ]; then
                         if [ -n "$(git ls-tree --name-only "$br" $PERMS)" ]; then
-                                git show "$br:$PERMS" | grep "^$LOCALDIR" | _apply_file_permissions
+                                git show "$br:$PERMS" | grep "^$LOCALDIR" | _apply_file_permissions "$@"
                                 ret=$?
                         fi
                 fi
@@ -659,7 +679,7 @@ _checkout_filters() {
                         ret=$?
                         if [ $ret -eq 0 ]; then
                                 if [ -n "$(git ls-tree --name-only "$br" $PERMS)" ]; then
-                                        git show "$br:$PERMS" | grep '\.gitattributes' | _apply_file_permissions
+                                        git show "$br:$PERMS" | grep '\.gitattributes' | _apply_file_permissions "$@"
                                         ret=$?
                                 fi
                         fi
@@ -672,6 +692,10 @@ _checkout_filters() {
 
 _checkout_blacklist() {
         local br="$1"
+
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
         local blacklist="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- '\.gitignore')"
         local mask="$(umask)"
         local ret=0
@@ -682,7 +706,7 @@ _checkout_blacklist() {
                 ret=$?
                 if [ $ret -eq 0 ]; then
                         if [ -n "$(git ls-tree --name-only "$br" $PERMS)" ]; then
-                                git show "$br:$PERMS" | grep '\.gitignore' | _apply_file_permissions
+                                git show "$br:$PERMS" | grep '\.gitignore' | _apply_file_permissions "$@"
                                 ret=$?
                         fi
                 fi
@@ -694,6 +718,10 @@ _checkout_blacklist() {
 
 _checkout_perms() {
         local br="$1"
+
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
         local mask="$(umask)"
         local ret=0
 
@@ -702,7 +730,7 @@ _checkout_perms() {
                 git checkout --theirs $br -- $PERMS 1>/dev/null 2>&1
                 ret=$?
                 if [ $ret -eq 0 ]; then
-                        git show "$br:$PERMS" | grep "$PERMS" | _apply_file_permissions
+                        git show "$br:$PERMS" | grep "$PERMS" | _apply_file_permissions "$@"
                         ret=$?
                 fi
         fi
@@ -715,7 +743,10 @@ _setup_branch_filters() {
         local br="$1"
         [ -n "$br" ] || return 0
 
-        if _checkout_filters "$br"; then
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
+        if _checkout_filters "$br" "$@"; then
                 _setup_filters
         else
                 return 0
@@ -742,9 +773,12 @@ _checkout_meta() {
         local br="$1"
         [ -n "$br" ] || return 0
 
-        _setup_branch_filters "$br"
-        _checkout_blacklist "$br"
-        _checkout_perms "$br"
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
+        _setup_branch_filters "$br" "$@"
+        _checkout_blacklist "$br" "$@"
+        _checkout_perms "$br" "$@"
 
         return 0
 }
@@ -752,14 +786,18 @@ _checkout_meta() {
 _checkout_branch() {
 	local br="${1-$(_get_branch_name)}"
         [ -n "$br" ] || return 1
+
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
         local mask="$(umask)"
         local ret=0
 
         umask 0027
-        _setup_branch_filters "$br"
+        _setup_branch_filters "$br" "$@"
         ret=$?
         if [ $ret -eq 0 ]; then
-                git checkout --force "$br" 1>/dev/null 2>&1
+                git checkout --force "$br" ${1+-- "$@"} 1>/dev/null 2>&1
                 ret=$?
         fi
         if [ $ret -eq 0 ]; then
@@ -767,7 +805,7 @@ _checkout_branch() {
                 ret=$?
         fi
         if [ $ret -eq 0 ] && [ -e $PERMS ]; then
-                _apply_file_permissions <$PERMS
+                _apply_file_permissions "$@" <$PERMS
                 ret=$?
         fi
         umask $mask 1>/dev/null 2>&1
@@ -778,25 +816,35 @@ _checkout_branch() {
 checkout_branch() {
 	local br="${1-${in_branch-$(get_branch_name)}}"
 
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
 	(
 		_cd_init /etc || return 1
-		_checkout_branch "$br"
+		_checkout_branch "$br" "$@"
 	)
 }
 
 checkout_meta() {
 	local br="${1-${in_branch-$(get_branch_name)}}"
+
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
 	(
 		_cd_init /etc || return 1
-		_checkout_meta "$br"
+		_checkout_meta "$br" "$@"
 	)
 }
 
 reload_branch() {
 	local br="${1-${in_branch-$(get_branch_name)}}"
 
-	local killseq="$(list_kill_seq "$br")"
-	local startseq="$(list_start_seq "$br")"
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
+	local killseq="$(list_kill_seq "$br" "$@")"
+	local startseq="$(list_start_seq "$br" "$@")"
 	local ret=0
 
 	for s in $killseq; do
@@ -814,7 +862,7 @@ reload_branch() {
 
 	if [ $ret -eq 0 ]; then
 	        echo "*** Checking out $br ***" >&2
-		checkout_branch "$br"
+		checkout_branch "$br" "$@"
 		ret=$?
 		if [ $ret -ne 0 ]; then
                         printf '*** Unable to checkout the configuration ***\n' >&2
@@ -868,31 +916,33 @@ get_head_message() {
 }
 
 _get_diff() {
-	local file="$1"
-        local br="${2-$(_get_branch_name)}"
+        local br="${1-$(_get_branch_name)}"
 
-        [ -n "$br" ] && _setup_branch_filters "$br"
-	if [ -n "$file" ]; then
-                [ "$file" = "$PERMS" ] && _dump_file_permissions >$PERMS
-                git add -f "$file" 1>/dev/null 2>&1
-                git diff $br -- "$file" 2>/dev/null
-                git reset "$file" 1>/dev/null 2>&1
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
+
+        [ -n "$br" ] && _setup_branch_filters "$br" "$@"
+	_dump_file_permissions >"$PERMS"
+	git add -f "$@" "$PERMS" 1>/dev/null 2>&1
+	if [ $# -gt 0 ]; then
+                git diff "$br" -- "$@" 2>/dev/null
+                git reset -- "$@" 1>/dev/null 2>&1
 	else
-                _dump_file_permissions >$PERMS
-                git add -f $PERMS 1>/dev/null 2>&1
-                git diff $br 2>/dev/null
+                git diff "$br" 2>/dev/null
                 git reset . 1>/dev/null 2>&1
 	fi
         [ -n "$br" ] && _restore_filters
 }
 
 get_diff() {
-	local file="${1-${in_file-}}"
-        local br="${2-${in_branch-$(get_branch_name)}}"
+        local br="${1-${in_branch-$(get_branch_name)}}"
+
+	[ $# -gt 0 ] && shift ||:
+	while [ "${1:-}" = '--' ]; do shift; done
 
 	(
 		_cd_if_git /etc || return 0
-		_get_diff "$file" $br
+		_get_diff "$file" "$br" "$@"
 	)
 }
 
