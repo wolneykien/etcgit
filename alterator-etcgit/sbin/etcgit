@@ -98,11 +98,10 @@ All of the above operations are repository-management utils and do not
 mofify the contents of the configuration files under /etc. However,
 the following operations do that.
 
-  checkout [url] [commit|branch] Resets the configuration to the state
-                      defined by the current head or the given
-                      commit/branch optionally fetching it from the
-                      given URL. The affected system services are
-                      restarted. May be called as \`switch\`.
+  checkout [commit|branch] [file...] Resets the whole configuration or
+                      the specified file to the state defined by the
+                      current head or the given commit/branch. The
+                      affected system services are restarted.
 
 
 For additional usage information about a particular operation use
@@ -589,12 +588,13 @@ EOF
 }
 
 do_checkout() {
-    local OPTS=`getopt -n $PROG -o a,f,m,n,h -l async,force,meta-only,no-restart,help -- "$@"` || show_usage
+    local OPTS=`getopt -n $PROG -o a,f,m,n,u:,h -l async,force,meta-only,no-restart,url:,help -- "$@"` || show_usage
     eval set -- "$OPTS"
     local force=
     local async=
     local norestart=
     local metaonly=
+    local url=
     while :; do
 	case "$1" in
 	    -a|--async)
@@ -609,22 +609,26 @@ do_checkout() {
 	    -n|--no-restart)
 		norestart="-n"
 		;;
+	    -u|--url)
+		shift
+		url="$1"
+		;;
 	    -h|--help)
 		cat <<EOF
-Usage: $PROG $CMD [options] [url] [commit/branch]
+Usage: $PROG $CMD [options] [commit/branch] [--] [file...]
 
 Options: [-a|--async] [-f|--force] [-m|--meta-only]
-         [-n|--no-restart]
+         [-n|--no-restart] [-u URL|--url=URL]
 
-$PROG $CMD resets the configuration to the state defined by the
-current head or the given commit/branch optionally fetching it from
-the given URL. Is the -a option is passed the procedure is done
-asynchronously with the help of the \`at\` daemon. The -f option
-tells to forcily update the local branch with the same name. If the
--n option is not given then the affected system services are stopped
-before checking out the configuration files and restarted after.
-However, with the -m option only the metadata is checked out. May be
-called as \`checkout\` or \`switch\`.
+$PROG $CMD resets the whole configuration or the specified file to
+the state defined by the current head or the given commit/branch
+optionally fetching it from the given URL (the -u option). The
+affected system services are restarted. If the -a option is passed the
+procedure is done asynchronously with the help of the \`at\` daemon.
+The -f option tells to forcily update the local branch with the same
+name. If the -n option is not given then the affected system services
+are stopped before checking out the configuration files and restarted
+after. However, with the -m option only the metadata is checked out.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -641,14 +645,14 @@ EOF
     done
 
     if [ -z "$async" ]; then
-	local url=
 	local br=
-	if [ $# -gt 1 ]; then
-	    url="$1"
-	    br="$2"
-	elif [ $# -gt 0 ]; then
+	if [ $# -gt 0 ]; then
 	    br="$1"
+	    shift
 	fi
+
+	while [ "${1:-}" = '--' ]; do shift; done
+
 	if [ -n "${url:-}" ] && [ -n "$br" ]; then
 	    in_force="$force" fetch_remote_branch "$url" "$br"
 	fi
@@ -656,9 +660,9 @@ EOF
 	    checkout_meta ${br:+"$br"}
 	else
 	    if [ -z "$norestart" ]; then
-		reload_branch ${br:+"$br"}
+		reload_branch ${br:+"$br"} "$@"
 	    else
-		checkout_branch ${br:+"$br"}
+		checkout_branch ${br:+"$br"} "$@"
 	    fi
 	fi
     else
