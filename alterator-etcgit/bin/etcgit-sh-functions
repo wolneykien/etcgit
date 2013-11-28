@@ -304,7 +304,7 @@ _print_branch_info() {
 
 _list_remote_branches() {
         local url="${1-$(_get_branch_remote_url)}"
-	local puburl="${2-${in_puburl}"
+	local puburl="${2-${in_puburl-}}"
 
 	git ls-remote --heads "$url" | \
                 while read rhd rbr; do
@@ -321,7 +321,7 @@ _reset_branch() {
 
 _list_all_branches() {
         local url="${1-$(_get_branch_remote_url)}"
-	local puburl="${2-${in_puburl}"
+	local puburl="${2-${in_puburl-}}"
 
         (
                 git show-ref --heads | sed -n -e 's,^[0-9a-f]\+[[:space:]]\+refs/heads/,,p'
@@ -1052,7 +1052,7 @@ _commit_tree() {
 }
 
 _publish_branch() {
-    local puburl="${1-${in_puburl}}"
+    local puburl="${1-${in_puburl-}}"
     local br="${2-$(_get_branch_name)}"
     local force="${in_force-}"
     [ -n "$br" ] || return 1
@@ -1072,14 +1072,14 @@ _publish_branch() {
 }
 
 delete_remote_branch() {
-    local puburl="${1-${in_puburl}}"
+    local puburl="${1-${in_puburl-}}"
     local br="${2-$(_get_branch_name)}"
 
     git push "$puburl" ":$br" 1>/dev/null 2>&1 || return 5
 }
 
 publish_branch() {
-    local puburl="${1-${in_puburl}}"
+    local puburl="${1-${in_puburl-}}"
     local br="${2-${in_branch-$(get_branch_name)}}"
     [ -n "$br" ] || return 1
 
@@ -1090,7 +1090,7 @@ publish_branch() {
 }
 
 _publish_repo() {
-    local puburl="${1-${in_puburl}}"
+    local puburl="${1-${in_puburl-}}"
 
     git show-ref --heads | sed -e 's,^[0-9a-z]\+[[:space:]]\+refs/heads/,,' | \
         while read br; do
@@ -1099,7 +1099,7 @@ _publish_repo() {
 }
 
 clear_remote_repo() {
-    local puburl="${1-${in_puburl}}"
+    local puburl="${1-${in_puburl-}}"
 
     _list_remote_branches "$puburl" |
         while read br; do
@@ -1108,7 +1108,7 @@ clear_remote_repo() {
 }
 
 publish_repo() {
-    local puburl="${1-${in_puburl}}"
+    local puburl="${1-${in_puburl-}}"
 
     (
         _cd_if_git /etc || return 0
