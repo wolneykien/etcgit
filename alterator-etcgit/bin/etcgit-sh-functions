@@ -950,7 +950,7 @@ get_diff() {
 
 	(
 		_cd_if_git /etc || return 0
-		_get_diff "$file" "$br" ${1+-- "$@"}
+		_get_diff "$br" ${1+-- "$@"}
 	)
 }
 
