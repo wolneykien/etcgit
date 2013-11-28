@@ -577,8 +577,7 @@ _filter_SK() {
 
 list_modified() {
 	_list_modified "$@" | \
-	sed -e 's/^[[:space:]]*[^[:space:]]\+[[:space:]]\+//' \
-	    -e 's,^.*$,/etc/&,'
+	sed -e 's,^\([^[:space:]]\+\)[[:space:]]\+\(.*\)$,\1 /etc/\2,'
 }
 
 list_modified_files() {
