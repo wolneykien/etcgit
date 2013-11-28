@@ -128,6 +128,7 @@ EOF
 }
 
 show_head() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
     while :; do
@@ -177,6 +178,7 @@ EOF
 }
 
 do_commit() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o b:,h -l branch:,help -- "$@"` || show_usage
     eval set -- "$OPTS"
     local nbr=
@@ -222,6 +224,7 @@ EOF
 }
 
 show_diff() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
     while :; do
@@ -254,6 +257,7 @@ EOF
 }
 
 show_branches() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
     while :; do
@@ -290,6 +294,7 @@ EOF
 
 
 show_default_branches() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
     while :; do
@@ -323,6 +328,7 @@ EOF
 }
 
 show_commits() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
     while :; do
@@ -354,6 +360,7 @@ EOF
 }
 
 show_services() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
     while :; do
@@ -386,6 +393,7 @@ EOF
 }
 
 show_status() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
     while :; do
@@ -417,6 +425,7 @@ EOF
 }
 
 do_fetch() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
     eval set -- "$OPTS"
     local force=
@@ -470,6 +479,7 @@ EOF
 }
 
 do_fetch_default() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
     eval set -- "$OPTS"
     local force=
@@ -521,6 +531,7 @@ EOF
 }
 
 do_reset() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
     local force=
@@ -555,6 +566,7 @@ EOF
 }
 
 do_delete() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     eval set -- "$OPTS"
     while :; do
@@ -588,6 +600,7 @@ EOF
 }
 
 do_checkout() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o a,f,m,n,u:,h -l async,force,meta-only,no-restart,url:,help -- "$@"` || show_usage
     eval set -- "$OPTS"
     local force=
@@ -673,6 +686,7 @@ EOF
 }
 
 do_push() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
     local force=
     eval set -- "$OPTS"
@@ -714,6 +728,7 @@ EOF
 }
 
 do_unpublish() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
     local force=
     eval set -- "$OPTS"
