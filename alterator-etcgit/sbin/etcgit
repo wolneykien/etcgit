@@ -98,14 +98,15 @@ All of the above operations are repository-management utils and do not
 mofify the contents of the configuration files under /etc. However,
 the following operations do that.
 
-  checkout [commit|branch] [file...] Resets the whole configuration or
-                      the specified file to the state defined by the
+  checkout [commit|branch] Resets the whole configuration or the
+                      specified file to the state defined by the
                       current head or the given commit/branch. The
                       affected system services are restarted.
 
 
-For additional usage information about a particular operation use
-\`$PROG <operation> --help\`.
+Some of the operations support a list of filenames passed after the
+'--' separator. Use \`$PROG <operation> --help\` for additional usage
+information.
 
 Report bugs to http://bugs.altlinux.ru/
 
@@ -328,10 +329,12 @@ show_commits() {
 	case "$1" in
 	    -h|--help)
 		cat <<EOF
-Usage: $PROG $CMD [commit|branch]
+Usage: $PROG $CMD [commit|branch] [--] [file...]
 
 $PROG $CMD displays the history list of the current or the specified
 commit/branch.
+
+If a list of filenames is given only the listed files are reported.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -347,11 +350,7 @@ EOF
 	shift
     done
 
-    if [ $# -gt 0 ]; then
-	list_commits "$1"
-    else
-	list_commits
-    fi
+    list_commits "$@"
 }
 
 show_services() {
