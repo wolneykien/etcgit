@@ -607,7 +607,7 @@ list_kill_seq() {
         local br="${1:-${in_branch-$(get_branch_name)}}"
     shift
 
-	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br" "$@"))"
+	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br" ${1+-- "$@"}))"
 
 	for s in $srvs; do
                 list_kill_seq_for_srv "$s"
@@ -621,7 +621,7 @@ list_start_seq() {
         local br="${1:-${in_branch-$(get_branch_name)}}"
     shift
 
-	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br" "$@"))"
+	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br" ${1+-- "$@"}))"
 
 	for s in $srvs; do
                 list_branch_start_seq_for_srv "$br" "$s"
@@ -647,22 +647,24 @@ _setup_filters() {
 }
 
 _list_commits() {
-	local br="${1-$(_get_branch_name)}"
-        local skip="${2-}"
-	local limit="${3-}"
+    eval set -- "$(_normargs 1 "$@")"
+	local br="${1:-$(_get_branch_name)}"
+    shift
+        local skip="${in_skip-}"
+	local limit="${in_limit-}"
 
         [ $skip -eq 0 ] && skip=
-        git log --format='%H%x09%ci%x09%s' ${skip:+--skip=$skip} ${limit:+-$limit} $br
+        git log --format='%H%x09%ci%x09%s' ${skip:+--skip=$skip} ${limit:+-$limit} "$br" ${1+-- "$@"}
 }
 
 list_commits() {
-        local br="${1-${in_branch-$(get_branch_name)}}"
-	local limit="${2-${in_limit-100}}"
-        local skip="${3-${in_skip-0}}"
+    eval set -- "$(_normargs 1 "$@")"
+        local br="${1:-${in_branch-$(get_branch_name)}}"
+    shift
 
 	(
 		_cd_if_git /etc || return 0
-		_list_commits "$br" "$skip" "$limit"
+		_list_commits "$br" ${1+-- "$@"}
 	)
 }
 
@@ -678,7 +680,7 @@ _checkout_filters() {
 
         umask 0027
         if [ -n "$filters" ]; then
-                git checkout --theirs $br -- $filters 1>/dev/null 2>&1
+                git checkout --theirs "$br" -- $filters 1>/dev/null 2>&1
                 ret=$?
                 if [ $ret -eq 0 ]; then
                         if [ -n "$(git ls-tree --name-only "$br" $PERMS)" ]; then
@@ -755,11 +757,11 @@ _checkout_perms() {
 
 _setup_branch_filters() {
     eval set -- "$(_normargs 1 "$@")"
-        local br="$1"
+        local br="${1:-}"
     shift
         [ -n "$br" ] || return 0
 
-        if _checkout_filters "$br" "$@"; then
+        if _checkout_filters "$br" ${1+-- "$@"}; then
                 _setup_filters
         else
                 return 0
@@ -788,9 +790,9 @@ _checkout_meta() {
     shift
         [ -n "$br" ] || return 0
 
-        _setup_branch_filters "$br" "$@"
-        _checkout_blacklist "$br" "$@"
-        _checkout_perms "$br" "$@"
+        _setup_branch_filters "$br" ${1+-- "$@"}
+        _checkout_blacklist "$br" ${1+-- "$@"}
+        _checkout_perms "$br" ${1+-- "$@"}
 
         return 0
 }
@@ -805,7 +807,7 @@ _checkout_branch() {
         local ret=0
 
         umask 0027
-        _setup_branch_filters "$br" "$@"
+        _setup_branch_filters "$br" ${1+-- "$@"}
         ret=$?
         if [ $ret -eq 0 ]; then
                 git checkout --force "$br" ${1+-- "$@"} 1>/dev/null 2>&1
@@ -831,7 +833,7 @@ checkout_branch() {
 
 	(
 		_cd_init /etc || return 1
-		_checkout_branch "$br" "$@"
+		_checkout_branch "$br" ${1+-- "$@"}
 	)
 }
 
@@ -842,7 +844,7 @@ checkout_meta() {
 
 	(
 		_cd_init /etc || return 1
-		_checkout_meta "$br" "$@"
+		_checkout_meta "$br" ${1+-- "$@"}
 	)
 }
 
@@ -851,8 +853,8 @@ reload_branch() {
 	local br="${1:-${in_branch-$(get_branch_name)}}"
     shift
 
-	local killseq="$(list_kill_seq "$br" "$@")"
-	local startseq="$(list_start_seq "$br" "$@")"
+	local killseq="$(list_kill_seq "$br" ${1+-- "$@"})"
+	local startseq="$(list_start_seq "$br" ${1+-- "$@"})"
 	local ret=0
 
 	for s in $killseq; do
@@ -870,7 +872,7 @@ reload_branch() {
 
 	if [ $ret -eq 0 ]; then
 	        echo "*** Checking out $br ***" >&2
-		checkout_branch "$br" "$@"
+		checkout_branch "$br" ${1+-- "$@"}
 		ret=$?
 		if [ $ret -ne 0 ]; then
                         printf '*** Unable to checkout the configuration ***\n' >&2
@@ -928,7 +930,7 @@ _get_diff() {
         local br="${1:-$(_get_branch_name)}"
     shift
 
-        [ -n "$br" ] && _setup_branch_filters "$br" "$@"
+        [ -n "$br" ] && _setup_branch_filters "$br" ${1+-- "$@"}
 	_dump_file_permissions >"$PERMS"
 	git add -f "$@" "$PERMS" 1>/dev/null 2>&1
 	if [ $# -gt 0 ]; then
@@ -948,7 +950,7 @@ get_diff() {
 
 	(
 		_cd_if_git /etc || return 0
-		_get_diff "$file" "$br" "$@"
+		_get_diff "$file" "$br" ${1+-- "$@"}
 	)
 }
 
@@ -957,10 +959,12 @@ _get_default_message() {
 }
 
 _add_filters_to_index() {
-        local br="$1"; shift
+    eval set -- "$(_normargs 1 "$@")"
+        local br="${1:-}"
+    shift
         [ -n "$br" ] || return 0
 
-        _setup_branch_filters "$br" "$@" || return $?
+        _setup_branch_filters "$br" ${1+-- "$@"} || return $?
 
         local filters="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- "^$FILTERSDIR_PAT")"
         local attrs="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- '\.gitattributes')"
@@ -1009,7 +1013,7 @@ _commit_tree() {
         [ $ret -eq 0 ] || return $ret
 
         if [ -z "$obr" ]; then
-                _add_filters_to_index "$bbr" "$@" || ret=3
+                _add_filters_to_index "$bbr" ${1+-- "$@"} || ret=3
         fi
         [ $ret -eq 0 ] || return $ret
 
@@ -1159,7 +1163,7 @@ commit_tree() {
 
         (
 	        _cd_if_git /etc || return 0
-                _commit_tree "$msg" "$bbr" "$nbr" "$@"
+                _commit_tree "$msg" "$bbr" "$nbr" ${1+-- "$@"}
                 ret=$?
                 case $ret in
                         1)
