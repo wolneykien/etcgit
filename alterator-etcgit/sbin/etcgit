@@ -248,20 +248,28 @@ EOF
     done
 
     local br=
+    local ret=0
     if [ $# -gt 0 ]; then
 	local msg="$1"; shift
 	if [ -n "$nbr" ]; then
-	    commit_tree "$msg" '' "$nbr" ${1+-- "$@"}
+	    commit_tree "$msg" "" "$nbr" ${1+-- "$@"}
+	    ret=$?
 	else
 	    br="$(_assert_branch)"
 	    if [ -n "$br" ]; then
 		commit_tree "$msg" "$br" ${1+-- "$@"}
+		ret=$?
 	    else
-		echo "Use \`-b NEW-BRANCH\` to explicitly specify the name of the branch to be created" >&2
+		echo "Use \`-b NEW-BRANCH\` to explicitly specify the name of the branch to be created." >&2
 		exit 1
 	    fi
 	fi
-	echo "$(get_branch_head)"
+	if [ $ret -eq 0 ]; then
+	    echo "$(get_branch_head)"
+	elif [ $ret -eq 2 ]; then
+	    echo "Checkout some base branch with \`$PROG checkout NAME\` or its metadata (use -m) before commit." >&2
+	fi
+	return $ret
     else
 	echo "Usage: $PROG $CMD [options] message [--] [file...]" >&2
 	exit 1

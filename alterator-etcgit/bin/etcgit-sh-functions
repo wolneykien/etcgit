@@ -1025,7 +1025,7 @@ _commit_tree() {
         fi
         [ $ret -eq 0 ] || return $ret
 
-        if [ -z "$obr" ]; then
+        if [ -z "$obr" ] && [ -n "$bbr" ]; then
                 _add_filters_to_index "$bbr" ${1+-- "$@"} || ret=3
         fi
         [ $ret -eq 0 ] || return $ret
@@ -1202,7 +1202,7 @@ commit_tree() {
                                 ;;
                 esac
 
-                [ $ret -eq 0 ]
+                exit $ret
         )
 }
 
