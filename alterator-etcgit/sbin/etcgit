@@ -884,7 +884,7 @@ else
 	    show_diff "$@"
 	    ;;
 	show)
-	    show_branches
+	    show_branches "$@"
             ;;
         log)
 	    show_commits "$@"
