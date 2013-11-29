@@ -142,7 +142,7 @@ _assert_head() {
 	else
 	    echo "Not currently on any branch" >&2
 	fi
-	exit 1
+	return 1
     fi
 
     echo "$hd"
@@ -150,15 +150,16 @@ _assert_head() {
 
 _assert_branch() {
     local br=
+    local hd=
 
     if [ $# -gt 0 ] && [ "$1" != '--' ]; then
 	br="$1"
-	local hd="$(_assert_head "$br")" || exit $?
+	hd="$(_assert_head "$br")" || return $?
     else
 	br="$(get_branch_name)"
 	if [ -z "$br" ]; then
 	    echo "Not currently on any branch" >&2
-	    exit 1
+	    return 1
 	fi
     fi
 
@@ -246,13 +247,19 @@ EOF
 	shift
     done
 
+    local br=
     if [ $# -gt 0 ]; then
 	local msg="$1"; shift
 	if [ -n "$nbr" ]; then
 	    commit_tree "$msg" '' "$nbr" ${1+-- "$@"}
 	else
-	    local br="$(_assert_branch)" || exit $?
-	    commit_tree "$msg" "$br" ${1+-- "$@"}
+	    br="$(_assert_branch)"
+	    if [ -n "$br" ]; then
+		commit_tree "$msg" "$br" ${1+-- "$@"}
+	    else
+		echo "Use \`-b NEW-BRANCH\` to explicitly specify the name of the branch to be created" >&2
+		exit 1
+	    fi
 	fi
 	echo "$(get_branch_head)"
     else
@@ -291,7 +298,8 @@ EOF
 	shift
     done
 
-    local br="$(_assert_branch "$@")" || exit $?
+    local br=
+    br="$(_assert_branch "$@")" || exit $?
     get_diff "$@"
 }
 
@@ -401,7 +409,8 @@ EOF
 	shift
     done
 
-    local br="$(_assert_branch "$@")" || exit $?
+    local br=
+    br="$(_assert_branch "$@")" || exit $?
     list_commits "$@"
 }
 
@@ -435,7 +444,8 @@ EOF
 	shift
     done
 
-    local br="$(_assert_branch "$@")" || exit $?
+    local br=
+    br="$(_assert_branch "$@")" || exit $?
     list_start_seq "$@"
 }
 
@@ -468,7 +478,8 @@ EOF
 	shift
     done
 
-    local br="$(_assert_branch "$@")" || exit $?
+    local br=
+    br="$(_assert_branch "$@")" || exit $?
     list_modified "$@"
 }
 
@@ -707,8 +718,9 @@ EOF
 	shift
     done
 
+    local br=
     if [ -z "$async" ]; then
-	local br="$(_assert_branch "$@")" || exit $?
+	br="$(_assert_branch "$@")" || exit $?
 	if [ $# -gt 0 ] && [ "$1" != '--' ]; then
 	    shift
 	fi
@@ -763,12 +775,13 @@ EOF
 	esac
 	shift
     done
-
+	
+    local br=
     if [ $# -gt 1 ]; then
-	local br="$(_assert_branch "$2")" || exit $?
+	br="$(_assert_branch "$2")" || exit $?
         in_force="$force" publish_branch "$1" "$br"
     elif [ $# -gt 0 ]; then
-	local br="$(_assert_branch)" || exit $?
+	br="$(_assert_branch)" || exit $?
 	in_force="$force" publish_repo "$1"
     else
 	echo "Usage: $PROG $CMD [-f|--force] url [branch]"
@@ -815,8 +828,9 @@ EOF
 }
 
 show_brief() {
-    local hd="$(_assert_head)" || exit $?
+    local hd=
 
+    hd="$(_assert_head)" || exit $?
     if [ -n "$(_list_modified)" ]; then
         echo -e "$hd+\\t$(get_branch_name)\\t$(get_head_message)"
         return 1
