@@ -58,7 +58,7 @@ Commands:
                       the committed state  of the current or the
                       specified branch to the current state.
 
-  show [url] [branch] Displays information about the named or all
+  show [branch]       Displays information about the named or all
                       configuration branches at the given URL or in
                       the local repository.
 
@@ -127,6 +127,44 @@ EOF
     exit
 }
 
+_assert_head() {
+    local hd=
+
+    if [ $# -gt 0 ] && [ "$1" != '--' ]; then
+	hd="$(get_branch_head "$1")"
+    else
+	hd="$(get_branch_head)"
+    fi
+
+    if [ -z "$hd" ]; then
+	if [ $# -gt 0 ]; then
+	    echo "Branch not found: $1" >&2
+	else
+	    echo "Not currently on any branch" >&2
+	fi
+	exit 1
+    fi
+
+    echo "$hd"
+}
+
+_assert_branch() {
+    local br=
+
+    if [ $# -gt 0 ] && [ "$1" != '--' ]; then
+	br="$1"
+	local hd="$(_assert_head "$br")" || exit $?
+    else
+	br="$(get_branch_name)"
+	if [ -z "$br" ]; then
+	    echo "Not currently on any branch" >&2
+	    exit 1
+	fi
+    fi
+
+    echo "$br"
+}
+
 show_head() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
     local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
@@ -156,23 +194,18 @@ EOF
 
     local hd=
     if [ $# -gt 0 ]; then
-	hd="$(get_branch_head "$1")"
+	hd="$(_assert_head "$1")" || exit $?
 	if [ -n "$(_list_modified "$1")" ]; then
             echo "$hd+"
 	else
             echo "$hd"
 	fi
     else
-	hd="$(get_branch_head)"
-	if [ -n "$hd" ]; then
-	    if [ -n "$(_list_modified)" ]; then
-		echo "$hd+"
-	    else
-		echo "$hd"
-	    fi
+	hd="$(_assert_head)" || exit $?
+	if [ -n "$(_list_modified)" ]; then
+	    echo "$hd+"
 	else
-	    echo "Nothing was checked out yet" >&2
-	    return 2
+	    echo "$hd"
 	fi
     fi
 }
@@ -215,7 +248,12 @@ EOF
 
     if [ $# -gt 0 ]; then
 	local msg="$1"; shift
-	commit_tree "$msg" '' ${nbr:+"$nbr"} ${1+-- "$@"} && \
+	if [ -n "$nbr" ]; then
+	    commit_tree "$msg" '' "$nbr" ${1+-- "$@"}
+	else
+	    local br="$(_assert_branch)" || exit $?
+	    commit_tree "$msg" "$br" ${1+-- "$@"}
+	fi
 	echo "$(get_branch_head)"
     else
 	echo "Usage: $PROG $CMD [options] message [--] [file...]" >&2
@@ -253,18 +291,24 @@ EOF
 	shift
     done
 
+    local br="$(_assert_branch "$@")" || exit $?
     get_diff "$@"
 }
 
 show_branches() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS=`getopt -n $PROG -o u:,h -l url:,help -- "$@"` || show_usage
     eval set -- "$OPTS"
+    local url=
     while :; do
 	case "$1" in
+	    -u|--url)
+		shift
+		url="$1"
+		;;
 	    -h|--help)
 		cat <<EOF
-Usage: $PROG $CMD [url] [branch]
+Usage: $PROG $CMD [-u URL|--url=URL] [branch]
 
 $PROG $CMD Displays information about the named or all configuration
 branches at the given URL or in the local repository.
@@ -283,10 +327,11 @@ EOF
 	shift
     done
 
-    if [ $# -gt 1 ]; then
-	_print_branch_info "$1" "$2"
-    elif [ $# -gt 0 ]; then
-        list_remote_branches "$1"
+    
+    if [ $# -gt 0 ]; then
+	_print_branch_info "$url" "$1"
+    elif [ -n "$url" ]; then
+        list_remote_branches "$url"
     else
         list_local_branches
     fi
@@ -356,6 +401,7 @@ EOF
 	shift
     done
 
+    local br="$(_assert_branch "$@")" || exit $?
     list_commits "$@"
 }
 
@@ -389,6 +435,7 @@ EOF
 	shift
     done
 
+    local br="$(_assert_branch "$@")" || exit $?
     list_start_seq "$@"
 }
 
@@ -421,6 +468,7 @@ EOF
 	shift
     done
 
+    local br="$(_assert_branch "$@")" || exit $?
     list_modified "$@"
 }
 
@@ -660,9 +708,8 @@ EOF
     done
 
     if [ -z "$async" ]; then
-	local br=
-	if [ $# -gt 0 ]; then
-	    br="$1"
+	local br="$(_assert_branch "$@")" || exit $?
+	if [ $# -gt 0 ] && [ "$1" != '--' ]; then
 	    shift
 	fi
 
@@ -680,7 +727,7 @@ EOF
 	fi
     else
         cat <<EOF | at now 2>/dev/null
-$PROG $CMD ${force:+-f} ${norestart:+-n} ${metaonly:+-m} "$@"
+$PROG $CMD ${force:+-f} ${norestart:+-n} ${metaonly:+-m} ${url:+-u "$url"} "$@"
 EOF
     fi
 }
@@ -718,8 +765,10 @@ EOF
     done
 
     if [ $# -gt 1 ]; then
-        in_force="$force" publish_branch "$1" "$2"
+	local br="$(_assert_branch "$2")" || exit $?
+        in_force="$force" publish_branch "$1" "$br"
     elif [ $# -gt 0 ]; then
+	local br="$(_assert_branch)" || exit $?
 	in_force="$force" publish_repo "$1"
     else
 	echo "Usage: $PROG $CMD [-f|--force] url [branch]"
@@ -766,18 +815,14 @@ EOF
 }
 
 show_brief() {
-    local hd="$(get_branch_head)"
-    if [ -n "$hd" ]; then
-	if [ -n "$(_list_modified)" ]; then
-            echo -e "$hd+\\t$(get_branch_name)\\t$(get_head_message)"
-            return 1
-	else
-            echo -e "$hd\\t$(get_branch_name)\\t$(get_head_message)"
-            return 0
-	fi
+    local hd="$(_assert_head)" || exit $?
+
+    if [ -n "$(_list_modified)" ]; then
+        echo -e "$hd+\\t$(get_branch_name)\\t$(get_head_message)"
+        return 1
     else
-	echo "Nothing was checked out yet" >&2
-	return 2
+        echo -e "$hd\\t$(get_branch_name)\\t$(get_head_message)"
+        return 0
     fi
 }
 

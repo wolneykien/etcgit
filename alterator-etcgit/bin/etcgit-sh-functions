@@ -206,8 +206,8 @@ fetch_remote_branch() {
 
 _delete_branch() {
         local br="$1"
-
         [ -n "$br" ] || return 0
+
         if [ "$br" = "$(_get_branch_name)" ]; then
                 git checkout --detach "$br" 1>/dev/null 2>&1
         fi
@@ -376,17 +376,18 @@ _test_smudge() {
 
         [ ! -e "${file%/*}/.gitattributes" ] || \
         ! grep -q "^${file##*/}[[:space:]]\\+filter=" "${file%/*}/.gitattributes" || \
-        [ $(git diff $br -- "$file" 2>/dev/null | wc -l) -gt 0 ]
+        [ $(git diff "$br" -- "$file" 2>/dev/null | wc -l) -gt 0 ]
 }
 
 _list_modified() {
     eval set -- "$(_normargs 1 "$@")"
         local br="${1:-${in_branch-$(get_branch_name)}}"
+	[ -n "$br" ] || return 1
     shift
 	(
 		_cd_if_git /etc || return 0
                 [ -e .gitignore ] && git add . 1>/dev/null 2>&1
-                [ -n "$br" ] && _setup_branch_filters "$br" "$@"
+                _setup_branch_filters "$br" "$@"
                 _dump_file_permissions "$@" >$PERMS
                 git add -f $PERMS 1>/dev/null 2>&1
                 git diff --name-status "$br" ${1+-- "$@"} 2>/dev/null | \
@@ -496,6 +497,7 @@ _list_S() {
 
 _list_branch_S_for_runlevel() {
         local br="${1-$(get_branch_name)}"
+	[ -n "$br" ] || return 1
         local runlevel="${2-$(_get_runlevel)}"
         [ -n "$runlevel" ] || runlevel=3
 
@@ -516,6 +518,7 @@ _srv_is_on() {
 
 list_branch_start_seq_for_srv() {
         local br="${1-$(get_branch_name)}"
+	[ -n "$br" ] || return 1
         local srvname="${2:-$in_service}"
         local runlevel="$(_get_runlevel)"
         [ -n "$runlevel" ] || runlevel=3
@@ -604,6 +607,7 @@ list_modified_files_and_dirs() {
 list_kill_seq() {
     eval set -- "$(_normargs 1 "$@")"
         local br="${1:-${in_branch-$(get_branch_name)}}"
+	[ -n "$br" ] || return 1
     shift
 
 	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br" ${1+-- "$@"}))"
@@ -618,6 +622,7 @@ list_kill_seq() {
 list_start_seq() {
     eval set -- "$(_normargs 1 "$@")"
         local br="${1:-${in_branch-$(get_branch_name)}}"
+	[ -n "$br" ] || return 1
     shift
 
 	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$br" ${1+-- "$@"}))"
@@ -648,6 +653,7 @@ _setup_filters() {
 _list_commits() {
     eval set -- "$(_normargs 1 "$@")"
 	local br="${1:-$(_get_branch_name)}"
+	[ -n "$br" ] || return 1
     shift
         local skip="${in_skip-}"
 	local limit="${in_limit-}"
@@ -659,6 +665,7 @@ _list_commits() {
 list_commits() {
     eval set -- "$(_normargs 1 "$@")"
         local br="${1:-${in_branch-$(get_branch_name)}}"
+	[ -n "$br" ] || return 1
     shift
 
 	(
@@ -670,6 +677,7 @@ list_commits() {
 _checkout_filters() {
     eval set -- "$(_normargs 1 "$@")"
         local br="$1"
+	[ -n "$br" ] || return 1
     shift
 
         local filters="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- "^$FILTERSDIR_PAT")"
@@ -710,6 +718,7 @@ _checkout_filters() {
 _checkout_blacklist() {
     eval set -- "$(_normargs 1 "$@")"
         local br="$1"
+	[ -n "$br" ] || return 1
     shift
 
         local blacklist="$(git ls-tree -r --name-only "$br" 2>/dev/null | grep -- '\.gitignore')"
@@ -734,7 +743,8 @@ _checkout_blacklist() {
 
 _checkout_perms() {
     eval set -- "$(_normargs 1 "$@")"
-        local br="$1"
+        local br="${1:-}"
+        [ -n "$br" ] || return 1
     shift
 
         local mask="$(umask)"
@@ -757,8 +767,8 @@ _checkout_perms() {
 _setup_branch_filters() {
     eval set -- "$(_normargs 1 "$@")"
         local br="${1:-}"
+        [ -n "$br" ] || return 1
     shift
-        [ -n "$br" ] || return 0
 
         if _checkout_filters "$br" ${1+-- "$@"}; then
                 _setup_filters
@@ -785,9 +795,9 @@ _restore_filters() {
 
 _checkout_meta() {
     eval set -- "$(_normargs 1 "$@")"
-        local br="$1"
+        local br="${1:-}"
+        [ -n "$br" ] || return 1
     shift
-        [ -n "$br" ] || return 0
 
         _setup_branch_filters "$br" ${1+-- "$@"}
         _checkout_blacklist "$br" ${1+-- "$@"}
@@ -799,8 +809,8 @@ _checkout_meta() {
 _checkout_branch() {
     eval set -- "$(_normargs 1 "$@")"
 	local br="${1:-$(_get_branch_name)}"
+	[ -n "$br" ] || return 1
     shift
-        [ -n "$br" ] || return 1
 
         local mask="$(umask)"
         local ret=0
@@ -828,6 +838,7 @@ _checkout_branch() {
 checkout_branch() {
     eval set -- "$(_normargs 1 "$@")"
 	local br="${1:-${in_branch-$(get_branch_name)}}"
+	[ -n "$br" ] || return 1
     shift
 
 	(
@@ -839,6 +850,7 @@ checkout_branch() {
 checkout_meta() {
     eval set -- "$(_normargs 1 "$@")"
 	local br="${1:-${in_branch-$(get_branch_name)}}"
+	[ -n "$br" ] || return 1
     shift
 
 	(
@@ -850,6 +862,7 @@ checkout_meta() {
 reload_branch() {
     eval set -- "$(_normargs 1 "$@")"
 	local br="${1:-${in_branch-$(get_branch_name)}}"
+	[ -n "$br" ] || return 1
     shift
 
 	local killseq="$(list_kill_seq "$br" ${1+-- "$@"})"
@@ -927,9 +940,10 @@ get_head_message() {
 _get_diff() {
     eval set -- "$(_normargs 1 "$@")"
         local br="${1:-$(_get_branch_name)}"
+	[ -n "$br" ] || return 1
     shift
 
-        [ -n "$br" ] && _setup_branch_filters "$br" ${1+-- "$@"}
+        _setup_branch_filters "$br" ${1+-- "$@"}
 	_dump_file_permissions >"$PERMS"
 	git add -f "$@" "$PERMS" 1>/dev/null 2>&1
 	if [ $# -gt 0 ]; then
@@ -960,8 +974,8 @@ _get_default_message() {
 _add_filters_to_index() {
     eval set -- "$(_normargs 1 "$@")"
         local br="${1:-}"
+	[ -n "$br" ] || return 1
     shift
-        [ -n "$br" ] || return 0
 
         _setup_branch_filters "$br" ${1+-- "$@"} || return $?
 
@@ -1053,8 +1067,8 @@ _commit_tree() {
 _publish_branch() {
     local puburl="${1-${in_puburl-}}"
     local br="${2-$(_get_branch_name)}"
-    local force="${in_force-}"
     [ -n "$br" ] || return 1
+    local force="${in_force-}"
 
     init_pubdir "$puburl"
 
