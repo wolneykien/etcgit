@@ -655,7 +655,7 @@ _list_commits() {
 	local br="${1:-$(_get_branch_name)}"
 	[ -n "$br" ] || return 1
     shift
-        local skip="${in_skip-}"
+        local skip="${in_skip-0}"
 	local limit="${in_limit-}"
 
         [ $skip -eq 0 ] && skip=
