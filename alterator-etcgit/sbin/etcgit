@@ -176,8 +176,8 @@ show_head() {
 		cat <<EOF
 Usage: $PROG $CMD [branch]
 
-$PROG $CMD outputs the current or the specified branch's head hash with
-optional '+' (modified) mark.
+\`$PROG $CMD\` outputs the current or the specified branch's head hash
+with optional '+' (modified) mark.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -228,7 +228,7 @@ Usage: $PROG $CMD [options] message [--] [file...]
 
 Options: [-b NEW-BRANCH|--branch=NEW-BRANCH]
 
-$PROG $CMD commits the current state to the current or the specified
+\`$PROG $CMD\` commits the current state to the current or the specified
 new branch recording the supplied comment message.
 
 If a list of filenames is given only the listed files are committed.
@@ -278,7 +278,7 @@ show_diff() {
 		cat <<EOF
 Usage: $PROG $CMD [commit|branch] [--] [file...]
 
-$PROG $CMD displays a full or a per-file diff from the committed
+\`$PROG $CMD\` displays a full or a per-file diff from the committed
 state of the current or the specified commit/branch to the current
 state.
 
@@ -318,7 +318,7 @@ show_branches() {
 		cat <<EOF
 Usage: $PROG $CMD [-u URL|--url=URL] [branch]
 
-$PROG $CMD Displays information about the named or all configuration
+\`$PROG $CMD\` Displays information about the named or all configuration
 branches at the given URL or in the local repository.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
@@ -356,7 +356,7 @@ show_default_branches() {
 		cat <<EOF
 Usage: $PROG $CMD [branch]
 
-$PROG $CMD Displays information about the named or all configuration
+\`$PROG $CMD\` Displays information about the named or all configuration
 system default configuration branches.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
@@ -390,7 +390,7 @@ show_commits() {
 		cat <<EOF
 Usage: $PROG $CMD [commit|branch] [--] [file...]
 
-$PROG $CMD displays the history list of the current or the specified
+\`$PROG $CMD\` displays the history list of the current or the specified
 commit/branch.
 
 If a list of filenames is given only the listed files are reported.
@@ -424,8 +424,8 @@ show_services() {
 		cat <<EOF
 Usage: $PROG $CMD [commit/branch] [--] [file...]
 
-$PROG $CMD displays the list of the services that need to be restarted
-when switching (resetting) to the specified commit/branch.
+\`$PROG $CMD\` displays the list of the services that need to be
+restarted when switching (resetting) to the specified commit/branch.
 
 If a list of filenames is given only the affected services are
 reported.
@@ -459,8 +459,8 @@ show_status() {
 		cat <<EOF
 Usage: $PROG $CMD [commit/branch] [--] [file...]
 
-$PROG $CMD displays the list of files modified since the current head
-or the specified commit/branch.
+\`$PROG $CMD\` displays the list of files modified since the current
+head or the specified commit/branch.
 
 If a list of filenames is given only the listed files are reported.
 
@@ -497,7 +497,7 @@ do_fetch() {
 		cat <<EOF
 Usage: $PROG $CMD [-f|--force] url [branch]
 
-$PROG $CMD fetches the specified or all branches from the given URL.
+\`$PROG $CMD\` fetches the specified or all branches from the given URL.
 The local branches with the same names are updated (FF) if possible.
 Otherwise they need to be explicitly deleted first (see the \`delete\`
 operation) or the -f option should be passed. May be called as
@@ -551,7 +551,7 @@ do_fetch_default() {
 		cat <<EOF
 Usage: $PROG $CMD [-f|--force] [branch]
 
-$PROG $CMD fetches the specified or all branches from the system
+\`$PROG $CMD\` fetches the specified or all branches from the system
 defaults repository. The local branches with the same names are
 updated (FF) if possible. Otherwise they need to be explicitly deleted
 first (see the \`delete\` operation) or the -f option should be
@@ -600,7 +600,7 @@ do_reset() {
 		cat <<EOF
 Usage: $PROG $CMD commit|branch
 
-$PROG $CMD resets the current head to the specified commit/branch.
+\`$PROG $CMD\` resets the current head to the specified commit/branch.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -634,7 +634,7 @@ do_delete() {
 		cat <<EOF
 Usage: $PROG $CMD branch
 
-$PROG $CMD deletes the specified branch.
+\`$PROG $CMD\` deletes the specified branch.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -692,7 +692,7 @@ Usage: $PROG $CMD [options] [commit/branch] [--] [file...]
 Options: [-a|--async] [-f|--force] [-m|--meta-only]
          [-n|--no-restart] [-u URL|--url=URL]
 
-$PROG $CMD resets the whole configuration or the specified file to
+\`$PROG $CMD\` resets the whole configuration or the specified file to
 the state defined by the current head or the given commit/branch
 optionally fetching it from the given URL (the -u option). The
 affected system services are restarted. If the -a option is passed the
@@ -758,9 +758,9 @@ do_push() {
 		cat <<EOF
 Usage: $PROG $CMD [-f|--force] url [branch]
 
-$PROG $CMD pushes the repository or one given branch to an
-other repository at the specified URL. For force update use the
--f option. May be called as \`publish\` or \`push\`.
+\`$PROG $CMD\` pushes the repository or one given branch to an other
+repository at the specified URL. For force update use the -f option.
+May be called as \`publish\` or \`push\`.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -800,7 +800,7 @@ do_unpublish() {
 		cat <<EOF
 Usage: $PROG $CMD url [branch]
 
-$PROG $CMD removes one named or all branches published at the
+\`$PROG $CMD\` removes one named or all branches published at the
 given URL.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
