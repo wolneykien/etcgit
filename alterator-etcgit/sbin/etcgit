@@ -138,7 +138,13 @@ _assert_head() {
 
     if [ -z "$hd" ]; then
 	if [ $# -gt 0 ]; then
-	    echo "Branch not found: $1" >&2
+	    hd="$(local_branch_for_head "$1")"
+	    if [ -z "$hd" ]; then
+		echo "Branch not found: $1" >&2
+	    else
+		echo "$hd"
+		return 0
+	    fi
 	else
 	    echo "Not currently on any branch" >&2
 	fi

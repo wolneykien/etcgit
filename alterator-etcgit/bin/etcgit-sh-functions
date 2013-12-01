@@ -146,7 +146,7 @@ local_branch_for_head() {
         local hd="${1-$(get_branch_name)}"
 
         (
-                _cd_init /etc || return 1
+                _cd_if_git /etc || return 1
                 _local_branch_for_head "$hd"
         )
 }
