@@ -1,36 +1,18 @@
-%define _altdata_dir %_datadir/alterator
-
-Name: alterator-etcgit
-Version: 1.1
-Release: alt17
+Name: etcgit
+Version: 1.2
+Release: alt1
 
 BuildArch: noarch
 
 Source:%name-%version.tar
 
-Summary: Alterator module to control versions of configuration files in /etc using git
-License: GPL
+Summary: Git-based version control for the configuration files (/etc)
+License: GPLv2+
 Group: System/Configuration/Other
-Requires: alterator >= 4.22-alt2
-Requires: alterator-fbi >= 5.27-alt1
-Requires: git-server
-Conflicts: alterator >= 5.0
-Conflicts: alterator-fbi >= 6.0
-
-BuildPreReq: alterator rpm-macros-fillup rpm-macros-alterator
+Requires: git-core
 
 %description
-Alterator module to control versions of configuration files in /etc
-using git.
-
-%package -n etcgit
-Summary: A tool to control versions of configuration files in /etc using git
-License: GPL
-Group: System/Configuration/Other
-
-%description -n etcgit
-A tool to control versions of configuration files in /etc using git.
-Currently is used by the "etcgit" Alterator module.
+Git-based version control for the configuration files (/etc).
 
 %prep
 %setup -q
@@ -42,17 +24,17 @@ Currently is used by the "etcgit" Alterator module.
 %makeinstall
 
 %files
-%_alterator_datadir/applications/*
-%_alterator_datadir/ui/etcgit
-%_alterator_backend3dir/etcgit
-%_alterator_datadir/design
-
-%files -n etcgit
 %_bindir/*
 %_sbindir/*
 %_sysconfdir/etckeeper/*/*
+%_datadir/etcgit
 
 %changelog
+* Mon Dec 02 2013 Paul Wolneykien <manowar@altlinux.org> 1.2-alt1
+- Extract the `etcgit` util and the library to the separate package.
+- Make the repo publishing independent of git-daemon.
+- Fix/improve the `etcgit` util and the library.
+
 * Thu Oct 25 2012 Paul Wolneykien <manowar@altlinux.ru> 1.1-alt17
 - Use the X-Alterator-VCS category.
 

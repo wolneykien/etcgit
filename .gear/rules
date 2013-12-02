@@ -1,2 +1,1 @@
-tar: alterator-etcgit
-copy: defaults.git.tar
+tar: etcgit
