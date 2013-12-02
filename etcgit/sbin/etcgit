@@ -319,21 +319,27 @@ EOF
 
 show_branches() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o u:,h -l url:,help -- "$@"` || show_usage
+    local OPTS=`getopt -n $PROG -o u:,a,h -l url:,all,help -- "$@"` || show_usage
     eval set -- "$OPTS"
     local url=
+    local all=
     while :; do
 	case "$1" in
+	    -a|--all)
+		all="-a"
+		;;
 	    -u|--url)
 		shift
 		url="$1"
 		;;
 	    -h|--help)
 		cat <<EOF
-Usage: $PROG $CMD [-u URL|--url=URL] [branch]
+Usage: $PROG $CMD [-u URL|--url=URL] [-a|--all] [branch]
 
-\`$PROG $CMD\` Displays information about the named or all configuration
-branches at the given URL or in the local repository.
+\`$PROG $CMD\` Displays information about the named or all
+configuration branches at the given URL or in the local repository.
+With -a option show local branches too along with their status
+relative to the same-named remote branches.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -353,7 +359,11 @@ EOF
     if [ $# -gt 0 ]; then
 	_print_branch_info "$url" "$1"
     elif [ -n "$url" ]; then
-        list_remote_branches "$url"
+	if [ -n "$all" ]; then
+            list_all_branches "$url"
+	else
+	    list_remote_branches "$url"
+	fi
     else
         list_local_branches
     fi
@@ -362,16 +372,22 @@ EOF
 
 show_default_branches() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS=`getopt -n $PROG -o a,h -l all,help -- "$@"` || show_usage
     eval set -- "$OPTS"
+    local all=
     while :; do
 	case "$1" in
+	    -a|--all)
+		all="-a"
+		;;
 	    -h|--help)
 		cat <<EOF
-Usage: $PROG $CMD [branch]
+Usage: $PROG $CMD [-a|--all] [branch]
 
-\`$PROG $CMD\` Displays information about the named or all configuration
-system default configuration branches.
+\`$PROG $CMD\` Displays information about the named or all system
+default configuration branches. With -a option show local branches too
+along with their status relative to the same-named system default
+branches.
 
 Use \`$PROG --help\` for general information about $PROG's usage.
 
@@ -390,7 +406,11 @@ EOF
     if [ $# -gt 0 ]; then
 	_print_branch_info "$SYSDEFAULTS" "$1"
     else
-        list_remote_branches "$SYSDEFAULTS"
+	if [ -n "$all" ]; then
+            list_all_branches "$SYSDEFAULTS"
+	else
+            list_remote_branches "$SYSDEFAULTS"
+	fi
      fi
 }
 
