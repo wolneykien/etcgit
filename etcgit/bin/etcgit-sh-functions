@@ -1107,11 +1107,21 @@ _publish_branch() {
     esac
 }
 
-delete_remote_branch() {
+_delete_remote_branch() {
     local puburl="${1-${in_puburl-}}"
     local br="${2-$(_get_branch_name)}"
 
     git push "$puburl" ":$br" 1>/dev/null 2>&1 || return 5
+}
+
+delete_remote_branch() {
+    local puburl="${1-${in_puburl-}}"
+    local br="${2-$(get_branch_name)}"
+    
+    (
+	_cd_init /etc || return 1
+	_delete_remote_branch "$puburl" "$br"
+    )
 }
 
 publish_branch() {
@@ -1130,17 +1140,26 @@ _publish_repo() {
 
     git show-ref --heads | sed -e 's,^[0-9a-z]\+[[:space:]]\+refs/heads/,,' | \
         while read br; do
-        _publish_branch "$puburl" "$br" || exit $?
-    done
+            _publish_branch "$puburl" "$br" || exit $?
+        done
+}
+
+_clear_remote_repo() {
+    local puburl="$1"
+
+    git ls-remote --heads "$puburl" | \
+        while read rhd rbr; do
+            _delete_remote_branch "$puburl" "$rbr" || exit $?
+        done
 }
 
 clear_remote_repo() {
     local puburl="${1-${in_puburl-}}"
 
-    _list_remote_branches "$puburl" |
-        while read br; do
-            delete_remote_branch "$puburl" "$br" || exit $?
-	done
+    (
+	_cd_init /etc || return 1
+	_clear_remote_repo "$puburl"
+    )
 }
 
 publish_repo() {
