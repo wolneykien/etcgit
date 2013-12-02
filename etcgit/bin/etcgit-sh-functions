@@ -833,6 +833,11 @@ _checkout_branch() {
         local mask="$(umask)"
         local ret=0
 
+	local br="$(_local_branch_for_head "$hd")"
+	if [ -n "$br" ]; then
+	    hd="$br"
+	fi
+
         umask 0027
         _setup_branch_filters "$hd" ${1+-- "$@"}
         ret=$?
