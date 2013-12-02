@@ -797,8 +797,12 @@ EOF
 	br="$(_assert_branch "$2")" || exit $?
         in_force="$force" publish_branch "$1" "$br"
     elif [ $# -gt 0 ]; then
-	br="$(_assert_branch)" || exit $?
-	in_force="$force" publish_repo "$1"
+	if [ $(list_local_branches | wc -l) -gt 0 ]; then
+	    in_force="$force" publish_repo "$1"
+	else
+	    echo "There are no any local branches to publish"
+	    exit 1
+	fi
     else
 	echo "Usage: $PROG $CMD [-f|--force] url [branch]"
 	exit 1
