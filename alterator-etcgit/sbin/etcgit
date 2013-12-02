@@ -312,8 +312,8 @@ EOF
 	shift
     done
 
-    local br=
-    br="$(_assert_branch "$@")" || exit $?
+    local hd=
+    hd="$(_assert_head "$@")" || exit $?
     get_diff "$@"
 }
 
@@ -423,8 +423,8 @@ EOF
 	shift
     done
 
-    local br=
-    br="$(_assert_branch "$@")" || exit $?
+    local hd=
+    hd="$(_assert_head "$@")" || exit $?
     list_commits "$@"
 }
 
@@ -458,8 +458,8 @@ EOF
 	shift
     done
 
-    local br=
-    br="$(_assert_branch "$@")" || exit $?
+    local hd=
+    hd="$(_assert_head "$@")" || exit $?
     list_start_seq "$@"
 }
 
@@ -492,8 +492,8 @@ EOF
 	shift
     done
 
-    local br=
-    br="$(_assert_branch "$@")" || exit $?
+    local hd=
+    hd="$(_assert_head "$@")" || exit $?
     list_modified "$@"
 }
 
@@ -732,23 +732,25 @@ EOF
 	shift
     done
 
-    local br=
+    local hd=
     if [ -z "$async" ]; then
-	br="$(_assert_branch "$@")" || exit $?
+	if [ -n "${url:-}" ] && [ $# -gt 0 ] && [ "$1" != '--' ]; then
+	    in_force="$force" fetch_remote_branch "$url" "$1"
+	fi
+
+	hd="$(_assert_head "$@")" || exit $?
+
 	if [ $# -gt 0 ] && [ "$1" != '--' ]; then
 	    shift
 	fi
 
-	if [ -n "${url:-}" ] && [ -n "$br" ]; then
-	    in_force="$force" fetch_remote_branch "$url" "$br"
-	fi
 	if [ -n "$metaonly" ]; then
-	    checkout_meta ${br:+"$br"} ${1+-- "$@"}
+	    checkout_meta "$hd" ${1+-- "$@"}
 	else
 	    if [ -z "$norestart" ]; then
-		reload_branch ${br:+"$br"} ${1+-- "$@"}
+		reload_branch "$hd" ${1+-- "$@"}
 	    else
-		checkout_branch ${br:+"$br"} ${1+-- "$@"}
+		checkout_branch "$hd" ${1+-- "$@"}
 	    fi
 	fi
     else
