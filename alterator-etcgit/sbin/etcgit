@@ -137,10 +137,10 @@ _assert_head() {
     fi
 
     if [ -z "$hd" ]; then
-	if [ $# -gt 0 ]; then
-	    hd="$(local_branch_for_head "$1")"
-	    if [ -z "$hd" ]; then
-		echo "Branch not found: $1" >&2
+	if [ $# -gt 0 ] && [ "$1" != '--' ]; then
+	    hd="$1"
+	    if ! commit_exists "$hd"; then
+		echo "Branch/commit not found: $hd" >&2
 	    else
 		echo "$hd"
 		return 0

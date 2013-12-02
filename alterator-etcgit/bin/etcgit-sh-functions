@@ -151,6 +151,21 @@ local_branch_for_head() {
         )
 }
 
+_commit_exists() {
+    local hd="${1-$(get_branch_name)}"
+
+    git log --oneline -1 "$hd" 1>/dev/null 2>/dev/null
+}
+
+commit_exists() {
+        local hd="${1-$(get_branch_name)}"
+
+        (
+                _cd_if_git /etc || return 1
+                _commit_exists "$hd"
+        )
+}
+
 _fetch_remote_branch() {
         local url="${1-$(_get_branch_remote_url)}"
         local br="${2-$(_get_branch_name)}"
