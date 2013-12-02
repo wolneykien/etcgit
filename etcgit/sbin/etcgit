@@ -24,7 +24,7 @@ write_error() {
 }
 
 PROG="${0##*/}"
-PROG_VERSION="1.1"
+PROG_VERSION="1.2"
 SYSDEFAULTS="/usr/share/etcgit/defaults.git"
 
 show_help() {
