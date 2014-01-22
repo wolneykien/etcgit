@@ -102,6 +102,8 @@ the following operations do that.
                       specified file to the state defined by the
                       current head or the given commit/branch. The
                       affected system services are restarted.
+                      May be called as \`switch\`.
+
 
 
 Some of the operations support a list of filenames passed after the
@@ -735,6 +737,8 @@ The -f option tells to forcily update the local branch with the same
 name. If the -n option is not given then the affected system services
 are stopped before checking out the configuration files and restarted
 after. However, with the -m option only the metadata is checked out.
+May be called as \`switch\`.
+
 
 If a list of filenames is given only the listed files are updated.
 
@@ -942,7 +946,7 @@ else
 	delete)
 	    do_delete "$@"
             ;;
-        switch|reset|checkout)
+    switch|checkout)
 	    do_checkout "$@"
             ;;
 	push|publish)
