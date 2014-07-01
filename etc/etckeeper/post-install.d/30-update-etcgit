@@ -1,0 +1,9 @@
+#!/bin/sh -uf
+
+. /usr/bin/etcgit-sh-functions
+
+(
+        _cd_if_git /etc || exit 0
+        [ -e .gitignore ] && git add . 1>/dev/null 2>&1
+        _dump_file_permissions >$PERMS
+)

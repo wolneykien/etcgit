@@ -1,0 +1,1262 @@
+#!/bin/sh
+#
+# Copyright (C) 2012  Paul Wolneykien <manowar@altlinux.org>
+#
+# This file is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+
+LOCALDIR=.etcgit
+LOCALDIR_PAT='\.etcgit'
+PERMS=$LOCALDIR/file-permissions
+PERMS_PAT="$LOCALDIR_PAT/file-permissions"
+FILTERSDIR=$LOCALDIR/filters
+FILTERSDIR_PAT="$LOCALDIR_PAT/filters"
+
+_normargs() {
+    local numargs=${1:-0}; shift
+    while [ $numargs -gt 0 ] && [ $# -gt 0 ] && [ "$1" != '--' ]; do
+	echo -n " '$1'"
+	shift
+	numargs=$((numargs - 1))
+    done
+    while [ $numargs -gt 0 ]; do
+	echo -n " ''"
+	numargs=$((numargs - 1))
+    done
+    while [ $# -gt 0 ] && [ "$1" = '--' ]; do
+	shift
+    done
+    while [ $# -gt 0 ]; do
+	echo -n " '$1'"
+	shift
+    done
+    echo
+}
+
+_cd_init() {
+	cd "$1"
+	[ -d .git ] || git init 1>/dev/null 2>&1
+        [ -d $LOCALDIR ] || mkdir $LOCALDIR
+}
+
+_cd_if_git() {
+	[ -d "${1%/}/.git" ] && cd "$1" || return 1
+        [ -d $LOCALDIR ] || mkdir $LOCALDIR
+}
+
+_get_branch_name() {
+        local br=$(git branch | sed -n -e 's/^\*[[:space:]]\+//p')
+
+        case "$br" in
+	    \(no\ branch\)|\(detached*)
+                echo ""
+		;;
+            *)
+                echo "$br"
+		;;
+        esac
+}
+
+get_branch_name() {
+	(
+		_cd_if_git /etc || return 0
+		_get_branch_name
+	)
+}
+
+_get_branch_remote_url() {
+	local br="$1"
+
+	[ -z "$br" ] && br="$(_get_branch_name)"
+        [ -n "$br" ] && git config "branch.$br.remote"
+}
+
+get_branch_remote_url() {
+        local br="${1-}"
+
+        (
+		_cd_if_git /etc || return 0
+		_get_branch_remote_url "$br"
+        )
+}
+
+_get_remote_branch_status() {
+        local url="${1-$(_get_branch_remote_url)}"
+        local br="${2-$(_get_branch_name)}"
+        [ -n "$url" ] && [ -n "$br" ] || return 1
+        local lhd=${3-$(_get_branch_head "$br")}
+        local rhd=$(_get_remote_branch_head "$url" "$br")
+        local status=
+
+        git fetch "$url" "$br" 2>/dev/null
+
+        if [ -n "$lhd" ] && [ -n "$rhd" ]; then
+                status=$(_compare_heads $rhd $lhd)
+        elif [ -n "$lhd" ]; then
+                status='lo'
+        elif [ -n "$rhd" ]; then
+                status='nw'
+        else
+                status='un'
+        fi
+
+        echo "$status"
+}
+
+_find_branch_or_head() {
+        local hd0="${1-$(get_branch_name)}"
+
+        while read -r hd1 br; do
+                if [ "$hd1" = "$hd0" ]; then
+                        echo "${br#refs/heads/}"
+                        return 0
+                fi
+                if [ "${br#refs/heads/}" = "$hd0" ]; then
+                        echo "${br#refs/heads/}"
+                        return 0
+                fi
+        done
+
+        return 1
+}
+
+remote_branch_for_head() {
+        local url="${1-$(get_branch_remote_url)}"
+        local hd="${2-$(get_branch_name)}"
+
+        git ls-remote --heads "$url" | _find_branch_or_head "$hd"
+}
+
+_local_branch_for_head() {
+        local hd="${1-$(_get_branch_head)}"
+
+        git show-ref --heads | _find_branch_or_head "$hd"
+}
+
+local_branch_for_head() {
+        local hd="${1-$(get_branch_name)}"
+
+        (
+                _cd_if_git /etc || return 1
+                _local_branch_for_head "$hd"
+        )
+}
+
+_commit_exists() {
+    local hd="${1-$(get_branch_name)}"
+
+    git log --oneline -1 "$hd" 1>/dev/null 2>/dev/null
+}
+
+commit_exists() {
+        local hd="${1-$(get_branch_name)}"
+
+        (
+                _cd_if_git /etc || return 1
+                _commit_exists "$hd"
+        )
+}
+
+_fetch_remote_branch() {
+        local url="${1-$(_get_branch_remote_url)}"
+        local br="${2-$(_get_branch_name)}"
+        [ -n "$br" ] || return 1
+        local ret=0
+
+        [ -n "$url" ] && [ -n "$br" ] || return 1
+
+	local status="$(_get_remote_branch_status "$url" "$br")"
+	if [ -n "${in_force:-}" ] && [ "$status" != 'un' ]; then
+	    status='fr'
+	else
+	    in_force=
+	fi
+        case "$status" in
+                nw|fr)
+                        if [ "$br" != "$(_get_branch_name)" ]; then
+                                git fetch ${in_force:+-f} "$url" "$br:$br" 1>/dev/null 2>&1
+                                ret=$?
+                        else
+                                git fetch ${in_force:+-f} "$url" "$br" 1>/dev/null 2>&1
+                                ret=$?
+                                if [ $ret -eq 0 ]; then
+                                        git reset $(_get_remote_branch_head "$url" "$br") 1>/dev/null 2>&1
+                                        ret=$?
+                                fi
+                        fi
+                        ;;
+                eq)
+                        ret=0
+                        ;;
+                *)
+                        ret=1
+                        ;;
+        esac
+
+        if [ $ret -eq 0 ]; then
+                git config "branch.$br.remote" "$url"
+        fi
+
+        return $ret
+}
+
+fetch_remote_branch() {
+        local url="${1-${in_url-$(get_branch_remote_url)}}"
+        local br="${2-${in_branch-}}"
+
+        (
+                _cd_init /etc || return 1
+                _fetch_remote_branch "$url" "$br"
+        )
+}
+
+_delete_branch() {
+        local br="$1"
+        [ -n "$br" ] || return 0
+
+        if [ "$br" = "$(_get_branch_name)" ]; then
+                git checkout --detach "$br" 1>/dev/null 2>&1
+        fi
+        git branch -D "$br" 1>/dev/null 2>&1 || return 1
+}
+
+delete_branch() {
+        local br="${1-${in_branch-}}"
+
+        (
+                _cd_if_git /etc || return 0
+                _delete_branch "$br"
+        )
+}
+
+_list_local_branches() {
+        git show-ref --heads | \
+                while read head name; do
+                        printf '%s\t%s\t%s\n' "${name##*/}" "$head" "$(_get_branch_remote_url "${name##*/}")"
+                done
+}
+
+list_local_branches() {
+	(
+		_cd_if_git /etc || return 0
+                _list_local_branches
+	)
+}
+
+_count_ancestry_path() {
+        local path="$1"
+
+        git log --ancestry-path "$path" | wc -l
+}
+
+_compare_heads() {
+        local hda="$1"
+        local hdb="$2"
+
+        if [ "$hda" = "$hdb" ]; then
+                echo 'eq'
+        elif [ $(_count_ancestry_path "$hda..$hdb") -gt 0 ]; then
+                echo 'ff'
+        elif [ $(_count_ancestry_path "$hdb..$hda") -gt 0 ]; then
+                echo 'fr'
+        else
+                echo 'br'
+        fi
+}
+
+list_remote_branches() {
+        local url="${1-${in_url-$(get_branch_remote_url)}}"
+
+        (
+                _cd_init /etc || return 1
+                _list_remote_branches "$url"
+        )
+}
+
+_get_remote_branch_head() {
+        local url="${1-$(_get_branch_remote_url)}"
+        local br="${2-$(_get_branch_name)}"
+        [ -n "$br" ] || return 1
+
+        git ls-remote --heads "$url" "$br" | sed -e 's,[[:space:]]\+refs/heads/.\+$,,'
+}
+
+_print_branch_info() {
+        local url="${1-$(_get_branch_remote_url)}"
+        local br="${2-$(_get_branch_name)}"
+	local puburl="${3-${in_puburl-}}"
+	local lhd="$(_get_branch_head "$br")"
+        [ -n "$lhd" ] || lhd=0
+        local rhd=
+
+        if [ -n "$br" ]; then
+                if [ -n "$url" ]; then
+                        rhd=$(_get_remote_branch_head "$url" "$br")
+                fi
+                [ -n "$rhd" ] || rhd=0
+                if [ -n "$url" ]; then
+                        printf '%s\t%s\t%s\t%s' $br $rhd $lhd $(_get_remote_branch_status "$url" "$br")
+                else
+                        printf '%s\t%s\t%s\t%s' $br $rhd $lhd 'nw'
+                fi
+		if [ -n "$puburl" ]; then
+		    printf '\t%s' $(_get_remote_branch_status "$puburl" "$br")
+		fi
+		printf '\n'
+        else
+                return 1
+        fi
+}
+
+_list_remote_branches() {
+        local url="${1-$(_get_branch_remote_url)}"
+	local puburl="${2-${in_puburl-}}"
+
+	git ls-remote --heads "$url" | \
+                while read rhd rbr; do
+                        _print_branch_info "$url" "${rbr##*/}" ${puburl:+"$puburl"}
+                done
+}
+
+_reset_branch() {
+        local hd="$1"
+        [ -n "$hd" ] || return 0
+
+        git reset "$hd" 1>/dev/null 2>&1
+}
+
+_list_all_branches() {
+        local url="${1-$(_get_branch_remote_url)}"
+	local puburl="${2-${in_puburl-}}"
+
+        (
+                git show-ref --heads | sed -n -e 's,^[0-9a-f]\+[[:space:]]\+refs/heads/,,p'
+                [ -n "$url" ] && git ls-remote --heads "$url" 2>/dev/null | sed -n -e 's,^[0-9a-f]\+[[:space:]]\+refs/heads/,,p'
+        ) | sort -u | \
+                while read br; do
+                        _print_branch_info "$url" "$br" ${puburl:+"$puburl"}
+                done
+}
+
+list_all_branches() {
+        local url="${1-${in_url-$(get_branch_remote_url)}}"
+
+        (
+                _cd_init /etc || return 1
+                _list_all_branches "$url"
+        )
+}
+
+reset_branch() {
+        local hd="${1-$in_commit}"
+        [ -n "$hd" ] || return 0
+
+        (
+                _cd_if_git /etc || return 0
+                _reset_branch "$hd"
+        )
+}
+
+_step_path_dirs() {
+        sed -n -e '/\.git[^\/]\+$/ {p; d}' \
+	       -e '/\.etcgit[^\/]\+$/ {p; d}' \
+	       -e ':b H; s,/[^/]\+$,,; t b; z; x; p; d' | sed -e '/^$/ d' | LC_ALL=C sort -u
+}
+
+_dump_file_permissions() {
+        stat -c '%n 0%a:%U:%G' $(find $(git ls-files) -type f 2>/dev/null | _step_path_dirs) 2>/dev/null ||:
+}
+
+_apply_file_permissions() {
+    local filter=
+    for f in "$@"; do
+	filter="$filter -e '/^$f / p'"
+    done
+        eval "$(sed -n ${filter:--e 'p'} | sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
+}
+
+_test_smudge() {
+        local file="${1:-}"
+        [ -n "$file" ] || return 0
+        local hd="${2-$(_get_branch_head)}"
+
+        [ ! -e "${file%/*}/.gitattributes" ] || \
+        ! grep -q "^${file##*/}[[:space:]]\\+filter=" "${file%/*}/.gitattributes" || \
+        [ $(git diff "$hd" -- "$file" 2>/dev/null | wc -l) -gt 0 ]
+}
+
+_list_modified() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-${in_branch-$(get_branch_head)}}"
+	[ -n "$hd" ] || return 1
+    shift
+	(
+		_cd_if_git /etc || return 0
+                [ -e .gitignore ] && git add . 1>/dev/null 2>&1
+                _setup_branch_filters "$hd" "$@"
+                _dump_file_permissions "$@" >$PERMS
+                git add -f $PERMS 1>/dev/null 2>&1
+                git diff --name-status "$hd" ${1+-- "$@"} 2>/dev/null | \
+                        while read status file; do
+                                if [ "$status" != 'M' ] || _test_smudge "$file" "$hd"; then
+                                        printf '%s\t%s\n' "$status" "$file"
+                                fi
+                        done
+                [ -n "$hd" ] && _restore_filters
+                git reset . 1>/dev/null 2>&1
+	)
+}
+
+_list_K() {
+        local rcd="$1"
+
+        find "$rcd" -name 'K*' | \
+        sed -e 's,^.*\(K[0-9]\+[^/]\+\)$,\1,' | \
+	sort
+}
+
+_get_runlevel() {
+        runlevel | sed -n 's/^.*\([0-9]\+\)$/\1/p'
+}
+
+_get_linked_srv() {
+
+        local srv=
+        
+        if [ -e "$1" ]; then
+                srv="$(readlink "$1")"
+                srv="${srv##*/}"
+        else
+                srv="${1##*/}"
+                srv="${srv#[SK][0-9][0-9]}"
+        fi
+
+        echo "$srv"
+}
+
+_list_rS() {
+        local rcd="$1"
+
+        find "$rcd" -name 'S*' | \
+        sed -e 's,^.*\(S[0-9]\+[^/]\+\)$,\1,' | \
+	sort -r
+}
+
+_in_list() {
+        local key="$1"; shift
+        [ $# -gt 0 ] || return 1
+
+        for k in "$@"; do
+                [ "$k" != "$key" ] || return 0
+        done
+
+        return 1
+}
+
+_srv_is_independent() {
+        local srv="$1"; shift
+
+        if _in_list 'network' "$@"; then
+                case "$srv" in
+                        ahttpd)
+                                return 1
+                                ;;
+                esac
+        fi
+
+	case "$srv" in
+		ahttpd|ahttpd-firsttime|alteratord|plymouth|local|irqbalance|mdadm|random|udevd|udevd-final|fbsetfont|consolesaver|keytable|gpm|dm|killall|mdadm|messagebus|multipathd|lvm2-monitor|outformat|rawdevices|sysstat|update_wms|x11presetdrv|smartd)
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
+list_kill_seq_for_srv() {
+        local srvname="${1:-$in_service}"
+        local rcd=/etc/rc.d/rc6.d
+        [ -d "$rcd" ] || return 2
+        local klist="$(_list_K "$rcd")"
+#        local ksrvlist="$(for f in $klist; do ksrv="$(_get_linked_srv "$rcd/$f")"; echo "$ksrv"; [ "$ksrv" != "$srvname" ] || break; done)"
+
+	local ksrvname=
+        for f in $klist; do
+		ksrvname="$(_get_linked_srv "$rcd/$f")"
+#		[ "$ksrvname" != "$srvname" ] && _srv_is_independent "$ksrvname" $ksrvlist && continue
+#                echo "$f"
+#                [ "$ksrvname" != "$srvname" ] || break
+                if [ "$ksrvname" = "$srvname" ]; then
+                        echo "$f"
+                fi
+        done
+}
+
+_list_S() {
+        local rcd="$1"
+
+        find "$rcd" -name 'S*' | \
+        sed -e 's,^.*\(S[0-9]\+[^/]\+\)$,\1,' | \
+	sort
+}
+
+_list_branch_S_for_runlevel() {
+        local hd="${1-$(get_branch_head)}"
+	[ -n "$hd" ] || return 1
+        local runlevel="${2-$(_get_runlevel)}"
+        [ -n "$runlevel" ] || runlevel=3
+
+        (
+                _cd_if_git /etc || exit 0
+                git ls-tree -r --name-only "$hd" 2>/dev/null | \
+                sed -n -e "s,^rc\\.d/rc$runlevel\\.d/S,S,p" | \
+                sort
+        )
+}
+
+_srv_is_on() {
+        local srv="$1"
+        local runlevel=${2-$(_get_runlevel)}
+
+        chkconfig --level $runlevel "$srv" 1>/dev/null 2>&1
+}
+
+list_branch_start_seq_for_srv() {
+        local hd="${1-$(get_branch_head)}"
+	[ -n "$hd" ] || return 1
+        local srvname="${2:-$in_service}"
+        local runlevel="$(_get_runlevel)"
+        [ -n "$runlevel" ] || runlevel=3
+        local rcd="/etc/rc.d/rc$runlevel.d"
+        [ -d "$rcd" ] || return 2
+	local killseq="$(list_kill_seq_for_srv "$srvname" | _filter_SK)"
+        local slist="$(_list_branch_S_for_runlevel "$hd" "$runlevel")"
+        local ssrvlist="$(for f in $slist; do ssrv="$(_get_linked_srv "$rcd/$f")"; echo "$ssrv"; [ "$ssrv" != "$srvname" ] || break; done)"
+
+	local ssrvname=
+        for f in $slist; do
+		ssrvname="$(_get_linked_srv "$rcd/$f")"
+                if _in_list "$ssrvname" $killseq; then
+                        echo "$f"
+                elif [ "$ssrvname" == "$srvname" ]; then
+                        echo "$f"
+                fi
+        done
+}
+
+_special_services() {
+    [ -n "$*" ] || return 0
+    for f in "$@"; do
+	case "$f" in
+	    /etc/resolv.conf)
+		echo "network"
+		;;
+	esac
+    done | sort -u
+}
+
+_list_service_names_for_files() {
+	[ -n "$*" ] || return 0
+        rpm -qfl "$@" 2>/dev/null | \
+        sed -n -e '/^\/etc\/init.d\/functions$/ d' \
+               -e '/^\/etc\/rc.d\/init.d\/functions$/ d' \
+               -e '/^\/etc\/init.d\/alteratord$/ d' \
+               -e '/^\/etc\/rc.d\/init.d\/alteratord$/ d' \
+               -e '/^\/etc\/init.d\/[^\/]\+$/ s/^.*\///p' \
+               -e '/^\/etc\/rc.d\/init.d\/[^\/]\+$/ s/^.*\///p'
+	_special_services "$@"
+}
+
+_get_service_names_for_files() {
+        # TODO: Better service identification (i.e. is $f a service?)
+        _list_service_names_for_files "$@" | \
+        sort -u | \
+        while read -r f; do
+                [ "${f#.}" == "$f" ] || continue
+                [ -x "/etc/init.d/$f" ] || continue
+                echo "$f"
+        done | \
+        uniq
+}
+
+_filter_SK() {
+        sed -e 's/^[SK][0-9]\+//'
+}
+
+list_modified() {
+	_list_modified "$@" | \
+	sed -e 's,^\([^[:space:]]\+\)[[:space:]]\+\(.*\)$,\1 /etc/\2,'
+}
+
+list_modified_files() {
+        _list_modified "$@" | \
+        while read -r status file; do
+                echo "/etc/$file"
+                case "$file" in
+                        rc.d/rc[0-9].d/[SK]*)
+                                echo "/etc/init.d/${file#rc.d/rc[0-9].d/[SK][0-9][0-9]}"
+                                ;;
+                        *)
+                                [ -h "/etc/$file" ] && echo "/etc/${file%/*}/$(readlink "/etc/$file")"
+                                ;;
+                esac
+        done | \
+        sort -u
+}
+
+list_modified_files_and_dirs() {
+	list_modified_files "$@" | \
+        _step_path_dirs
+}
+
+list_kill_seq() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-${in_branch-$(get_branch_head)}}"
+	[ -n "$hd" ] || return 1
+    shift
+
+	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$hd" ${1+-- "$@"}))"
+
+	for s in $srvs; do
+                list_kill_seq_for_srv "$s"
+        done | \
+        sort -ru | \
+        _filter_SK
+}
+
+list_start_seq() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-${in_branch-$(get_branch_head)}}"
+	[ -n "$hd" ] || return 1
+    shift
+
+	local srvs="$(_get_service_names_for_files $(list_modified_files_and_dirs "$hd" ${1+-- "$@"}))"
+
+	for s in $srvs; do
+                list_branch_start_seq_for_srv "$hd" "$s"
+        done | \
+        sort -u | \
+        _filter_SK
+}
+
+_duplicate() {
+        sed -e 's/^.*$/&\t&/'
+}
+
+_format_status() {
+	sed -e 's/^[[:space:]]*\([^[:space:]]\+\)[[:space:]]\+\(.*\)$/\2\t\1/'
+}
+
+_setup_filters() {
+        [ -d $FILTERSDIR ] || return 0
+
+        git ls-files $FILTERSDIR | while read f; do
+                git config "filter.${f#$FILTERSDIR/}" "$f %f"
+        done
+}
+
+_list_commits() {
+    eval set -- "$(_normargs 1 "$@")"
+	local hd="${1:-$(_get_branch_head)}"
+	[ -n "$hd" ] || return 1
+    shift
+        local skip="${in_skip-0}"
+	local limit="${in_limit-}"
+
+        [ $skip -eq 0 ] && skip=
+        git log --format='%H%x09%ci%x09%s' ${skip:+--skip=$skip} ${limit:+-$limit} "$hd" ${1+-- "$@"}
+}
+
+list_commits() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-${in_branch-$(get_branch_head)}}"
+	[ -n "$hd" ] || return 1
+    shift
+
+	(
+		_cd_if_git /etc || return 0
+		_list_commits "$hd" ${1+-- "$@"}
+	)
+}
+
+_checkout_filters() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="$1"
+	[ -n "$hd" ] || return 1
+    shift
+
+        local filters="$(git ls-tree -r --name-only "$hd" 2>/dev/null | grep -- "^$FILTERSDIR_PAT")"
+        local attrs="$(git ls-tree -r --name-only "$hd" 2>/dev/null | grep -- '\.gitattributes')"
+        local mask="$(umask)"
+        local ret=1
+
+        umask 0027
+        if [ -n "$filters" ]; then
+                git checkout --theirs "$hd" -- $filters 1>/dev/null 2>&1
+                ret=$?
+                if [ $ret -eq 0 ]; then
+                        if [ -n "$(git ls-tree --name-only "$hd" $PERMS)" ]; then
+                                git show "$hd:$PERMS" | grep "^$LOCALDIR" | _apply_file_permissions "$@"
+                                ret=$?
+                        fi
+                fi
+        fi
+
+        if [ $ret -eq 0 ]; then
+                ret=1
+                if [ -n "$attrs" ]; then
+                        git checkout --theirs "$hd" -- $attrs
+                        ret=$?
+                        if [ $ret -eq 0 ]; then
+                                if [ -n "$(git ls-tree --name-only "$hd" $PERMS)" ]; then
+                                        git show "$hd:$PERMS" | grep '\.gitattributes' | _apply_file_permissions "$@"
+                                        ret=$?
+                                fi
+                        fi
+                fi
+        fi
+        umask $mask 1>/dev/null 2>&1
+
+        return $ret
+}
+
+_checkout_blacklist() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="$1"
+	[ -n "$hd" ] || return 1
+    shift
+
+        local blacklist="$(git ls-tree -r --name-only "$hd" 2>/dev/null | grep -- '\.gitignore')"
+        local mask="$(umask)"
+        local ret=0
+
+        umask 0027
+        if [ -n "$blacklist" ]; then
+                git checkout --theirs "$hd" -- $blacklist 1>/dev/null 2>&1
+                ret=$?
+                if [ $ret -eq 0 ]; then
+                        if [ -n "$(git ls-tree --name-only "$hd" $PERMS)" ]; then
+                                git show "$hd:$PERMS" | grep '\.gitignore' | _apply_file_permissions "$@"
+                                ret=$?
+                        fi
+                fi
+        fi
+        umask $mask 1>/dev/null 2>&1
+
+        return $ret
+}
+
+_checkout_perms() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-}"
+        [ -n "$hd" ] || return 1
+    shift
+
+        local mask="$(umask)"
+        local ret=0
+
+        umask 0027
+        if [ -n "$(git ls-tree --name-only "$hd" $PERMS)" ]; then
+                git checkout --theirs "$hd" -- $PERMS 1>/dev/null 2>&1
+                ret=$?
+                if [ $ret -eq 0 ]; then
+                        git show "$hd:$PERMS" | grep "$PERMS" | _apply_file_permissions "$@"
+                        ret=$?
+                fi
+        fi
+        umask $mask 1>/dev/null 2>&1
+
+        return $ret
+}
+
+_setup_branch_filters() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-}"
+        [ -n "$hd" ] || return 1
+    shift
+
+        if _checkout_filters "$hd" ${1+-- "$@"}; then
+                _setup_filters
+        else
+                return 0
+        fi
+}
+
+_restore_filters() {
+        local attrs=
+
+        attrs="$(git ls-files -oc -- '*.gitattributes')"
+        [ -n "$attrs" ] && rm -f $attrs
+
+        attrs="$(git ls-tree -r --name-only HEAD 2>/dev/null | grep -- '\.gitattributes')"
+        [ -n "$attrs" ] && git checkout --ours HEAD -- $attrs
+
+        rm -rf $FILTERSDIR
+        if [ -n "$(git ls-tree -r --name-only HEAD 2>/dev/null | grep -- "^$FILTERSDIR_PAT")" ]; then
+                git checkout --ours HEAD -- $FILTERSDIR 1>/dev/null 2>&1 || return $?
+                _setup_filters
+        fi
+}
+
+_checkout_meta() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-}"
+        [ -n "$hd" ] || return 1
+    shift
+
+        _setup_branch_filters "$hd" ${1+-- "$@"}
+        _checkout_blacklist "$hd" ${1+-- "$@"}
+        _checkout_perms "$hd" ${1+-- "$@"}
+
+        return 0
+}
+
+_checkout_branch() {
+    eval set -- "$(_normargs 1 "$@")"
+	local hd="${1:-$(_get_branch_head)}"
+	[ -n "$hd" ] || return 1
+    shift
+
+        local mask="$(umask)"
+        local ret=0
+
+	local br="$(_local_branch_for_head "$hd")"
+	if [ -n "$br" ]; then
+	    hd="$br"
+	fi
+
+        umask 0027
+        _setup_branch_filters "$hd" ${1+-- "$@"}
+        ret=$?
+        if [ $ret -eq 0 ]; then
+                git checkout --force "$hd" ${1+-- "$@"} 1>/dev/null 2>&1
+                ret=$?
+        fi
+        if [ $ret -eq 0 ]; then
+                git clean -df 1>/dev/null 2>&1
+                ret=$?
+        fi
+        if [ $ret -eq 0 ] && [ -e $PERMS ]; then
+                _apply_file_permissions "$@" <$PERMS
+                ret=$?
+        fi
+        umask $mask 1>/dev/null 2>&1
+
+        return $ret
+}
+
+checkout_branch() {
+    eval set -- "$(_normargs 1 "$@")"
+	local br="${1:-${in_branch-$(get_branch_head)}}"
+	[ -n "$hd" ] || return 1
+    shift
+
+	(
+		_cd_init /etc || return 1
+		_checkout_branch "$hd" ${1+-- "$@"}
+	)
+}
+
+checkout_meta() {
+    eval set -- "$(_normargs 1 "$@")"
+	local hd="${1:-${in_branch-$(get_branch_head)}}"
+	[ -n "$hd" ] || return 1
+    shift
+
+	(
+		_cd_init /etc || return 1
+		_checkout_meta "$hd" ${1+-- "$@"}
+	)
+}
+
+reload_branch() {
+    eval set -- "$(_normargs 1 "$@")"
+	local hd="${1:-${in_branch-$(get_branch_head)}}"
+	[ -n "$hd" ] || return 1
+    shift
+
+	local killseq="$(list_kill_seq "$hd" ${1+-- "$@"})"
+	local startseq="$(list_start_seq "$hd" ${1+-- "$@"})"
+	local ret=0
+
+	for s in $killseq; do
+                if chkconfig "$s" 1>/dev/null 2>&1; then
+                        if ! service "$s" condstop >&2 && ! service "$s" stop >&2; then
+                                printf '*** Unable to stop service: %s ***\n' "$s" >&2
+                                write_error_message "`_ 'Unable to stop service: %s'`" "$s"
+                                ret=1
+                                break
+                        fi
+                else
+                        service "$s" condstop >&2 || service "$s" stop >&2
+		fi
+	done
+
+	if [ $ret -eq 0 ]; then
+	        echo "*** Checking out $hd ***" >&2
+		checkout_branch "$hd" ${1+-- "$@"}
+		ret=$?
+		if [ $ret -ne 0 ]; then
+                        printf '*** Unable to checkout the configuration ***\n' >&2
+                        write_error_message "`_ 'Unable to checkout the configuration'`"
+                fi
+	fi
+
+	for s in $startseq; do
+		if ! service "$s" start >&2; then
+                        printf '*** Unable to start service: %s ***\n' "$s" >&2
+			[ $ret -eq 0 ] && write_error_message "`_ 'Unable to start service: %s'`" "$s"
+			ret=1
+		fi
+	done
+
+	return $ret
+}
+
+_get_branch_head() {
+	local br="${1-$(_get_branch_name)}"
+
+        if [ -n "$br" ]; then
+                git show-ref --heads "$br" | sed -e 's,[[:space:]]\+refs/heads/.\+$,,'
+        else
+                git show-ref --head | sed -n -e 's,[[:space:]]\+HEAD$,,p'
+        fi
+}
+
+get_branch_head() {
+	local br="${1-${in_branch-$(get_branch_name)}}"
+
+	(
+		_cd_if_git /etc || return 0
+		_get_branch_head "$br"
+	)
+}
+
+_get_head_message() {
+        local hd="${1-HEAD}"
+
+        git log --format=%B -1 "$hd"
+}
+
+get_head_message() {
+        local hd="${1-${in_head-HEAD}}"
+
+        (
+                _cd_if_git /etc || return 0
+                _get_head_message "$hd"
+        )
+}
+
+_get_diff() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-$(_get_branch_head)}"
+	[ -n "$hd" ] || return 1
+    shift
+
+        _setup_branch_filters "$hd" ${1+-- "$@"}
+	_dump_file_permissions >"$PERMS"
+	git add -f "$@" "$PERMS" 1>/dev/null 2>&1
+	if [ $# -gt 0 ]; then
+                git diff "$hd" -- "$@" 2>/dev/null
+                git reset -- "$@" 1>/dev/null 2>&1
+	else
+                git diff "$hd" 2>/dev/null
+                git reset . 1>/dev/null 2>&1
+	fi
+        [ -n "$hd" ] && _restore_filters
+}
+
+get_diff() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-${in_branch-$(get_branch_head)}}"
+    shift
+
+	(
+		_cd_if_git /etc || return 0
+		_get_diff "$hd" ${1+-- "$@"}
+	)
+}
+
+_get_default_message() {
+        echo "`_ 'Commit'`"
+}
+
+_add_filters_to_index() {
+    eval set -- "$(_normargs 1 "$@")"
+        local hd="${1:-}"
+	[ -n "$hd" ] || return 1
+    shift
+
+        _setup_branch_filters "$hd" ${1+-- "$@"} || return $?
+
+        local filters="$(git ls-tree -r --name-only "$hd" 2>/dev/null | grep -- "^$FILTERSDIR_PAT")"
+        local attrs="$(git ls-tree -r --name-only "$hd" 2>/dev/null | grep -- '\.gitattributes')"
+        local ret=0
+
+        if [ -n "$filters" ]; then
+                git add -f $filters 1>/dev/null 2>&1
+                ret=$?
+        fi
+
+        if [ $ret -eq 0 ] && [ -n "$attrs" ]; then
+                git add -f $attrs  1>/dev/null 2>&1
+                ret=$?
+        fi
+
+        return $ret
+}
+
+_commit_tree() {
+    eval set -- "$(_normargs 3 "$@")"
+        local msg="${1:-$(_get_default_message)}"
+        local bbr="${2:-$(_get_branch_name)}"
+        local nbr="${3:-$(_get_branch_name)}"
+    shift 3
+        local cbr="$(_get_branch_name)"
+        local obr="$cbr"
+        local ret=0
+
+        if [ -z "$cbr" ] && [ -z "$nbr" ]; then
+                nbr="master"
+        fi
+
+        if [ -n "$bbr" ] && [ "$cbr" != "$bbr" ]; then
+                git symbolic-ref HEAD "refs/heads/$bbr" 1>/dev/null 2>&1 || ret=1
+                if [ $ret -eq 0 ]; then
+                        git reset $bbr 1>/dev/null 2>&1 || ret=1
+                fi
+                cbr="$bbr"
+        fi
+        [ $ret -eq 0 ] || return $ret
+
+        if [ -n "$nbr" ] && [ -n "$cbr" ] && [ "$nbr" != "$cbr" ]; then
+                git checkout -b "$nbr" 1>/dev/null 2>&1 || ret=1
+                cbr="$nbr"
+        fi
+        [ $ret -eq 0 ] || return $ret
+
+        if [ -z "$obr" ] && [ -n "$bbr" ]; then
+                _add_filters_to_index "$bbr" ${1+-- "$@"} || ret=3
+        fi
+        [ $ret -eq 0 ] || return $ret
+
+        if [ -e .gitignore ]; then
+	    if [ $# -gt 0 ]; then
+		git add "$@" 1>/dev/null 2>&1 || ret=3
+	    else
+                git add . 1>/dev/null 2>&1 || ret=3
+	    fi
+        else
+                ret=2
+        fi
+        [ $ret -eq 0 ] || return $ret
+
+        if [ $ret -eq 0 ]; then
+                touch $PERMS
+                git add -f $PERMS 1>/dev/null 2>&1 || ret=3
+                if [ $ret -eq 0 ]; then
+                        _dump_file_permissions >$PERMS || ret=4
+                fi
+        fi
+        if [ $ret -eq 0 ]; then
+                git add -f $PERMS 1>/dev/null 2>&1 || ret=3
+        fi
+        if [ $ret -eq 0 ]; then
+                git commit -a -m "$msg" 1>/dev/null 2>&1 || ret=5
+        fi
+        if [ $ret -eq 0 ]; then
+                if [ -n "$nbr" ]; then
+                        git branch -M "$(_get_branch_name)" "$nbr" 1>/dev/null 2>&1 || ret=1
+                fi
+        fi
+
+
+        return $ret
+}
+
+_publish_branch() {
+    local puburl="${1-${in_puburl-}}"
+    local br="${2-$(_get_branch_name)}"
+    [ -n "$br" ] || return 1
+    local force="${in_force-}"
+
+    init_pubdir "$puburl"
+
+    case "$(_get_remote_branch_status "$puburl" "$br")" in
+        lo|ff)
+            git push "$puburl" "$br" 1>/dev/null 2>&1 || return 4
+            ;;
+        nw|un)
+            ;;
+        *)
+            git push ${force:+--force} "$puburl" "$br" 1>/dev/null 2>&1 || return 4
+            ;;
+    esac
+}
+
+_delete_remote_branch() {
+    local puburl="${1-${in_puburl-}}"
+    local br="${2-$(_get_branch_name)}"
+
+    git push "$puburl" ":$br" 1>/dev/null 2>&1 || return 5
+}
+
+delete_remote_branch() {
+    local puburl="${1-${in_puburl-}}"
+    local br="${2-$(get_branch_name)}"
+    
+    (
+	_cd_init /etc || return 1
+	_delete_remote_branch "$puburl" "$br"
+    )
+}
+
+publish_branch() {
+    local puburl="${1-${in_puburl-}}"
+    local br="${2-${in_branch-$(get_branch_name)}}"
+    [ -n "$br" ] || return 1
+
+    (
+        _cd_if_git /etc || return 0
+        _publish_branch "$puburl" "$br"
+    )
+}
+
+_publish_repo() {
+    local puburl="${1-${in_puburl-}}"
+
+    git show-ref --heads | sed -e 's,^[0-9a-z]\+[[:space:]]\+refs/heads/,,' | \
+        while read br; do
+            _publish_branch "$puburl" "$br" || exit $?
+        done
+}
+
+_clear_remote_repo() {
+    local puburl="$1"
+
+    git ls-remote --heads "$puburl" | \
+        while read rhd rbr; do
+            _delete_remote_branch "$puburl" "$rbr" || exit $?
+        done
+}
+
+clear_remote_repo() {
+    local puburl="${1-${in_puburl-}}"
+
+    (
+	_cd_init /etc || return 1
+	_clear_remote_repo "$puburl"
+    )
+}
+
+publish_repo() {
+    local puburl="${1-${in_puburl-}}"
+
+    (
+        _cd_if_git /etc || return 0
+        _publish_repo "$puburl"
+    )
+}    
+
+_local_url() {
+    local pubdir="${1-${in_pubdir}}"
+
+    case "$pubdir" in
+	file://)
+	    return 0
+	    ;;
+	*://)
+	    return 1
+	    ;;
+	*:*)
+	    return 1
+	    ;;
+	*)
+	    return 0
+	    ;;
+	esac
+}
+
+init_pubdir() {
+    local pubdir="${1-${in_pubdir}}"
+    local ret=0   
+
+    if _local_url "$pubdir" && [ ! -d "$pubdir" ]; then
+        mkdir -p "$pubdir"
+        git init --bare "$pubdir" 1>/dev/null 2>&1
+        ret=$?
+    fi
+    
+    return $ret
+}
+
+delete_pubdir() {
+    local pubdir="${1-${in_pubdir}}"
+    [ -d "$pubdir" ] && rm -rf "$pubdir"
+}
+
+commit_tree() {
+    eval set -- "$(_normargs 3 "$@")"
+        local msg="${1:-$in_msg}"
+        local bbr="${2:-${in_base-$(get_branch_name)}}"
+        local nbr="${3:-${in_branch-}}"
+    shift 3
+        local ret=
+
+        (
+	        _cd_if_git /etc || return 0
+                _commit_tree "$msg" "$bbr" "$nbr" ${1+-- "$@"}
+                ret=$?
+                case $ret in
+                        1)
+                                write_error_message "`_ 'Unable to create/switch to the branch %s'`" "$bbr"
+                                ;;
+                        2)
+                                write_error_message "`_ 'Unable to add files to the commit: the .gitignore file doesn'\''t exist'`"
+                                ;;
+                        3)
+                                write_error_message "`_ 'Unable to add files to the commit'`"
+                                ;;
+                        4)
+                                write_error_message "`_ 'Unable to add metadata to the commit'`"
+                                ;;
+                        5)
+                                write_error_message "`_ 'Unable to commit changes locally'`"
+                                ;;
+                        6)
+                                write_error_message "`_ 'Unable to commit changes to the public repository'`"
+                                ;;
+                        7)
+                                write_error_message "`_ 'Unable to sync the local repository'`"
+                                ;;
+                esac
+
+                exit $ret
+        )
+}
+
+_() {
+        echo "$1"
+}
+
+write_error() {
+        echo "$1" >&2
+}
+
+write_error_message() {
+	local msg="$(printf "$@")"
+	write_error "$msg"
+}

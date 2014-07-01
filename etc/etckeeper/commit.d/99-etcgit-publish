@@ -1,0 +1,5 @@
+#!/bin/sh -uf
+
+. /usr/bin/etcgit-sh-functions
+
+publish_repo

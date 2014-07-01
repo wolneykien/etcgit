@@ -1,0 +1,963 @@
+#!/bin/sh -fu
+#
+# Copyright (C) 2012  Paul Wolneykien <manowar@altlinux.org>
+#
+# This file is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+
+. etcgit-sh-functions
+
+write_error() {
+    echo "$@" >&2
+}
+
+PROG="${0##*/}"
+PROG_VERSION="1.2"
+SYSDEFAULTS="/usr/share/etcgit/defaults.git"
+
+show_help() {
+    cat <<EOF
+Usage: $PROG [options] [command [args]]
+
+$PROG controls the Git repository of configuration files under /etc.
+
+With no command $PROG outputs a brief information about the current
+configuration state: commit hash, branch name and commit message.
+If if the current configuration differs from that state the '+' mark
+is output after the hash and exit code is nonzero.
+
+Options:
+
+  -q,--quiet          be quiet;
+  -v,--verbose        be verbose;
+  -V,--version        print program version and exit;
+  -h,--help           show this text and exit.
+
+Commands:
+
+  head [branch]       Outputs the current or the specified branch's
+                      head hash with optional '+' (modified) mark.
+
+  commit message      Commits the current state to the current
+                      or the specified new branch recording the
+                      supplied comment message.
+
+  diff [commit|branch] Displays a full or a per-file diff from
+                      the committed state  of the current or the
+                      specified branch to the current state.
+
+  show [branch]       Displays information about the named or all
+                      configuration branches at the given URL or in
+                      the local repository.
+
+  show-default [branch] Displays information about the named or all
+                      configuration system default configuration
+                      branches.
+
+  log [commit|branch] Displays the history list of the current or the
+                      specified branch.
+
+  services [commit|branch] Displays the list of the services that need
+                      to be restarted when switching (resetting) to
+                      the specified commit/branch.
+
+  status [commit|branch] Displays the list of files modified since the
+                      current head or the specified commit/branch.
+
+  fetch url [branch]  Fetches the specified or all branches from the
+                      given URL. May be called as \`update\`.
+
+  default [branch]    Fetches the specified or all branches from the
+                      system defaults repository.
+
+  reset commit|branch Resets the current head to the specified
+                      commit/branch.
+
+  delete branch       Deletes the specified branch.
+
+  publish url [branch] Pushes the repository or one given branch
+                      to an other repository at the specified URL.
+                      May be called as \`push\`.
+
+  unpublish url [branch] Deletes the copy published at the given URL.
+
+
+All of the above operations are repository-management utils and do not
+mofify the contents of the configuration files under /etc. However,
+the following operations do that.
+
+  checkout [commit|branch] Resets the whole configuration or the
+                      specified file to the state defined by the
+                      current head or the given commit/branch. The
+                      affected system services are restarted.
+                      May be called as \`switch\`.
+
+
+
+Some of the operations support a list of filenames passed after the
+'--' separator. Use \`$PROG <operation> --help\` for additional usage
+information.
+
+Report bugs to http://bugs.altlinux.ru/
+
+EOF
+    exit
+}
+
+print_version()
+{
+    cat <<EOF
+$PROG version $PROG_VERSION
+Written by Paul Wolneykien <manowar@altlinux.org>
+
+Copyright (C) 2012 Paul Wolneykien <manowar@altlinux.org>
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+EOF
+    exit
+}
+
+_assert_head() {
+    local hd=
+
+    if [ $# -gt 0 ] && [ "$1" != '--' ]; then
+	hd="$(get_branch_head "$1")"
+    else
+	hd="$(get_branch_head)"
+    fi
+
+    if [ -z "$hd" ]; then
+	if [ $# -gt 0 ] && [ "$1" != '--' ]; then
+	    hd="$1"
+	    if ! commit_exists "$hd"; then
+		echo "Branch/commit not found: $hd" >&2
+	    else
+		echo "$hd"
+		return 0
+	    fi
+	else
+	    echo "Not currently on any branch" >&2
+	fi
+	return 1
+    fi
+
+    echo "$hd"
+}
+
+_assert_branch() {
+    local br=
+    local hd=
+
+    if [ $# -gt 0 ] && [ "$1" != '--' ]; then
+	br="$1"
+	hd="$(_assert_head "$br")" || return $?
+    else
+	br="$(get_branch_name)"
+	if [ -z "$br" ]; then
+	    echo "Not currently on any branch" >&2
+	    return 1
+	fi
+    fi
+
+    echo "$br"
+}
+
+show_head() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [branch]
+
+\`$PROG $CMD\` outputs the current or the specified branch's head hash
+with optional '+' (modified) mark.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    local hd=
+    if [ $# -gt 0 ]; then
+	hd="$(_assert_head "$1")" || exit $?
+	if [ -n "$(_list_modified "$1")" ]; then
+            echo "$hd+"
+	else
+            echo "$hd"
+	fi
+    else
+	hd="$(_assert_head)" || exit $?
+	if [ -n "$(_list_modified)" ]; then
+	    echo "$hd+"
+	else
+	    echo "$hd"
+	fi
+    fi
+}
+
+do_commit() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o b:,h -l branch:,help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    local nbr=
+    while :; do
+	case "$1" in
+	    -b|--branch)
+		shift
+		nbr="$1"
+		;;
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [options] message [--] [file...]
+
+Options: [-b NEW-BRANCH|--branch=NEW-BRANCH]
+
+\`$PROG $CMD\` commits the current state to the current or the specified
+new branch recording the supplied comment message.
+
+If a list of filenames is given only the listed files are committed.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    local br=
+    local ret=0
+    if [ $# -gt 0 ]; then
+	local msg="$1"; shift
+	if [ -n "$nbr" ]; then
+	    commit_tree "$msg" "" "$nbr" ${1+-- "$@"}
+	    ret=$?
+	else
+	    br="$(_assert_branch)"
+	    if [ -n "$br" ]; then
+		commit_tree "$msg" "$br" ${1+-- "$@"}
+		ret=$?
+	    else
+		echo "Use \`-b NEW-BRANCH\` to explicitly specify the name of the branch to be created." >&2
+		exit 1
+	    fi
+	fi
+	if [ $ret -eq 0 ]; then
+	    echo "$(get_branch_head)"
+	elif [ $ret -eq 2 ]; then
+	    echo "Checkout some base branch with \`$PROG checkout NAME\` or its metadata (use -m) before commit." >&2
+	fi
+	return $ret
+    else
+	echo "Usage: $PROG $CMD [options] message [--] [file...]" >&2
+	exit 1
+    fi
+}
+
+show_diff() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [commit|branch] [--] [file...]
+
+\`$PROG $CMD\` displays a full or a per-file diff from the committed
+state of the current or the specified commit/branch to the current
+state.
+
+If a list of filenames is given only the listed files are reported.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    local hd=
+    hd="$(_assert_head "$@")" || exit $?
+    get_diff "$@"
+}
+
+show_branches() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o u:,a,h -l url:,all,help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    local url=
+    local all=
+    while :; do
+	case "$1" in
+	    -a|--all)
+		all="-a"
+		;;
+	    -u|--url)
+		shift
+		url="$1"
+		;;
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [-u URL|--url=URL] [-a|--all] [branch]
+
+\`$PROG $CMD\` Displays information about the named or all
+configuration branches at the given URL or in the local repository.
+With -a option show local branches too along with their status
+relative to the same-named remote branches.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    
+    if [ $# -gt 0 ]; then
+	_print_branch_info "$url" "$1"
+    elif [ -n "$url" ]; then
+	if [ -n "$all" ]; then
+            list_all_branches "$url"
+	else
+	    list_remote_branches "$url"
+	fi
+    else
+        list_local_branches
+    fi
+}
+
+
+show_default_branches() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o a,h -l all,help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    local all=
+    while :; do
+	case "$1" in
+	    -a|--all)
+		all="-a"
+		;;
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [-a|--all] [branch]
+
+\`$PROG $CMD\` Displays information about the named or all system
+default configuration branches. With -a option show local branches too
+along with their status relative to the same-named system default
+branches.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 0 ]; then
+	_print_branch_info "$SYSDEFAULTS" "$1"
+    else
+	if [ -n "$all" ]; then
+            list_all_branches "$SYSDEFAULTS"
+	else
+            list_remote_branches "$SYSDEFAULTS"
+	fi
+     fi
+}
+
+show_commits() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [commit|branch] [--] [file...]
+
+\`$PROG $CMD\` displays the history list of the current or the specified
+commit/branch.
+
+If a list of filenames is given only the listed files are reported.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    local hd=
+    hd="$(_assert_head "$@")" || exit $?
+    list_commits "$@"
+}
+
+show_services() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [commit/branch] [--] [file...]
+
+\`$PROG $CMD\` displays the list of the services that need to be
+restarted when switching (resetting) to the specified commit/branch.
+
+If a list of filenames is given only the affected services are
+reported.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    local hd=
+    hd="$(_assert_head "$@")" || exit $?
+    list_start_seq "$@"
+}
+
+show_status() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [commit/branch] [--] [file...]
+
+\`$PROG $CMD\` displays the list of files modified since the current
+head or the specified commit/branch.
+
+If a list of filenames is given only the listed files are reported.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    local hd=
+    hd="$(_assert_head "$@")" || exit $?
+    list_modified "$@"
+}
+
+do_fetch() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    local force=
+    while :; do
+	case "$1" in
+	    -f|--force)
+		force="-f"
+		;;
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [-f|--force] url [branch]
+
+\`$PROG $CMD\` fetches the specified or all branches from the given URL.
+The local branches with the same names are updated (FF) if possible.
+Otherwise they need to be explicitly deleted first (see the \`delete\`
+operation) or the -f option should be passed. May be called as
+\`fetch\` or \`update\`.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 1 ]; then
+        in_force="$force" fetch_remote_branch "$1" "$2"
+    elif [ $# -gt 0 ]; then
+	list_remote_branches "$1" | while read -r br rhd lhd st pst; do
+	    case "$st" in
+		nw|fr)
+		    fetch_remote_branch "$1" "$br"
+		    ;;
+		ff|br)
+		    if [ -n "$force" ]; then
+			in_force="$force" fetch_remote_branch "$1" "$br"
+		    fi
+	    esac
+	done
+    else
+	echo "Usage: $PROG $CMD [-f|--force] url [branch]"
+	exit 1
+    fi
+}
+
+do_fetch_default() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    local force=
+    while :; do
+	case "$1" in
+	    -f|--force)
+		force="-f"
+		;;
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [-f|--force] [branch]
+
+\`$PROG $CMD\` fetches the specified or all branches from the system
+defaults repository. The local branches with the same names are
+updated (FF) if possible. Otherwise they need to be explicitly deleted
+first (see the \`delete\` operation) or the -f option should be
+passed.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 0 ]; then
+        in_force="$force" fetch_remote_branch "$SYSDEFAULTS" "$1"
+    else
+	list_remote_branches "$SYSDEFAULTS" | \
+	  while read -r br rhd lhd st pst; do
+	    case "$st" in
+		nw|fr)
+		    fetch_remote_branch "$SYSDEFAULTS" "$br"
+		    ;;
+		ff|br)
+		    if [ -n "$force" ]; then
+			in_force="$force" fetch_remote_branch "$SYSDEFAULTS" "$br"
+		    fi
+	    esac
+	  done
+    fi
+}
+
+do_reset() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    local force=
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD commit|branch
+
+\`$PROG $CMD\` resets the current head to the specified commit/branch.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 0 ]; then
+	reset_branch "$1"
+    else
+	echo "Usage: $PROG $CMD commit|branch"
+	exit 1
+    fi
+}
+
+do_delete() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD branch
+
+\`$PROG $CMD\` deletes the specified branch.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 0 ]; then
+        delete_branch "$1"
+    else
+	echo "Usage: $PROG $CMD branch"
+	exit 1
+    fi
+}
+
+do_checkout() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o a,f,m,n,u:,h -l async,force,meta-only,no-restart,url:,help -- "$@"` || show_usage
+    eval set -- "$OPTS"
+    local force=
+    local async=
+    local norestart=
+    local metaonly=
+    local url=
+    while :; do
+	case "$1" in
+	    -a|--async)
+		async="-a"
+		;;
+	    -f|--force)
+		force="-f"
+		;;
+	    -m|--meta-only)
+		metaonly="-m"
+		;;
+	    -n|--no-restart)
+		norestart="-n"
+		;;
+	    -u|--url)
+		shift
+		url="$1"
+		;;
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [options] [commit/branch] [--] [file...]
+
+Options: [-a|--async] [-f|--force] [-m|--meta-only]
+         [-n|--no-restart] [-u URL|--url=URL]
+
+\`$PROG $CMD\` resets the whole configuration or the specified file to
+the state defined by the current head or the given commit/branch
+optionally fetching it from the given URL (the -u option). The
+affected system services are restarted. If the -a option is passed the
+procedure is done asynchronously with the help of the \`at\` daemon.
+The -f option tells to forcily update the local branch with the same
+name. If the -n option is not given then the affected system services
+are stopped before checking out the configuration files and restarted
+after. However, with the -m option only the metadata is checked out.
+May be called as \`switch\`.
+
+
+If a list of filenames is given only the listed files are updated.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    local hd=
+    if [ -z "$async" ]; then
+	if [ -n "${url:-}" ] && [ $# -gt 0 ] && [ "$1" != '--' ]; then
+	    in_force="$force" fetch_remote_branch "$url" "$1"
+	fi
+
+	hd="$(_assert_head "$@")" || exit $?
+
+	if [ $# -gt 0 ] && [ "$1" != '--' ]; then
+	    shift
+	fi
+
+	if [ -n "$metaonly" ]; then
+	    checkout_meta "$hd" ${1+-- "$@"}
+	else
+	    if [ -z "$norestart" ]; then
+		reload_branch "$hd" ${1+-- "$@"}
+	    else
+		checkout_branch "$hd" ${1+-- "$@"}
+	    fi
+	fi
+    else
+        cat <<EOF | at now 2>/dev/null
+$PROG $CMD ${force:+-f} ${norestart:+-n} ${metaonly:+-m} ${url:+-u "$url"} "$@"
+EOF
+    fi
+}
+
+do_push() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
+    local force=
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -f|--force)
+		force="-f"
+		;;
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD [-f|--force] url [branch]
+
+\`$PROG $CMD\` pushes the repository or one given branch to an other
+repository at the specified URL. For force update use the -f option.
+May be called as \`publish\` or \`push\`.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+	
+    local br=
+    if [ $# -gt 1 ]; then
+	br="$(_assert_branch "$2")" || exit $?
+        in_force="$force" publish_branch "$1" "$br"
+    elif [ $# -gt 0 ]; then
+	if [ $(list_local_branches | wc -l) -gt 0 ]; then
+	    in_force="$force" publish_repo "$1"
+	else
+	    echo "There are no any local branches to publish"
+	    exit 1
+	fi
+    else
+	echo "Usage: $PROG $CMD [-f|--force] url [branch]"
+	exit 1
+    fi
+}
+
+do_unpublish() {
+    [ "${1:-}" != '--' ] || eval set -- -- "$@"
+    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local force=
+    eval set -- "$OPTS"
+    while :; do
+	case "$1" in
+	    -h|--help)
+		cat <<EOF
+Usage: $PROG $CMD url [branch]
+
+\`$PROG $CMD\` removes one named or all branches published at the
+given URL.
+
+Use \`$PROG --help\` for general information about $PROG's usage.
+
+EOF
+		exit
+		;;
+	    --) shift; break;;
+	    *)
+		echo "Unrecognized option: $1"
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    if [ $# -gt 1 ]; then
+        delete_remote_branch "$1" "$2"
+    elif [ $# -gt 0 ]; then
+	clear_remote_repo "$1"
+    else
+	echo "Usage: $PROG $CMD url [branch]"
+	exit 1
+    fi
+}
+
+show_brief() {
+    local hd=
+
+    hd="$(_assert_head)" || exit $?
+    if [ -n "$(_list_modified)" ]; then
+        echo -e "$hd+\\t$(get_branch_name)\\t$(get_head_message)"
+        return 1
+    else
+        echo -e "$hd\\t$(get_branch_name)\\t$(get_head_message)"
+        return 0
+    fi
+}
+
+
+OPTS=`getopt -n $PROG -o +q,v,V,h -l quiet,verbose,version,help -- "$@"` || show_usage
+eval set -- "$OPTS"
+
+quiet=
+verbose=
+while :; do
+    case "$1" in
+	-q|--quiet) quiet=-q;;
+	-v|--verbose) verbose=-v;;
+	-V|--version) print_version;;
+	-h|--help) show_help;;
+	--) shift; break;;
+	*)
+	    echo "Unrecognized option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+if [ $# -eq 0 ]; then
+    show_brief "$@"
+else
+    CMD="$1"; shift
+    case "$CMD" in
+        head)
+	    show_head "$@"
+	    ;;
+       	commit)
+	    do_commit "$@"
+	    ;;
+        diff)
+	    show_diff "$@"
+	    ;;
+	show)
+	    show_branches "$@"
+            ;;
+        log)
+	    show_commits "$@"
+	    ;;
+        services)
+            show_services "$@"
+            ;;
+        status)
+            show_status "$@"
+            ;;
+        fetch|update)
+            do_fetch "$@"
+	    ;;
+	default)
+	    do_fetch_default "$@"
+	    ;;
+	show-default)
+	    show_default_branches "$@"
+	    ;;
+	reset)
+	    do_reset "$@"
+	    ;;
+	delete)
+	    do_delete "$@"
+            ;;
+    switch|checkout)
+	    do_checkout "$@"
+            ;;
+	push|publish)
+	    do_push "$@"
+	    ;;
+	unpublish)
+	    do_unpublish "$@";
+	    ;;
+	*)
+	    echo "Unknown operation: $CMD. See \`$PROG --help\` for the usage information."
+	    exit 1
+	    ;;
+    esac
+fi
