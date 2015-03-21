@@ -35,7 +35,7 @@ $PROG controls the Git repository of configuration files under /etc.
 
 With no command $PROG outputs a brief information about the current
 configuration state: commit hash, branch name and commit message.
-If if the current configuration differs from that state the '+' mark
+If the current configuration differs from that state the '+' mark
 is output after the hash and exit code is nonzero.
 
 Options:
@@ -55,7 +55,7 @@ Commands:
                       supplied comment message.
 
   diff [commit|branch] Displays a full or a per-file diff from
-                      the committed state  of the current or the
+                      the committed state of the current or the
                       specified branch to the current state.
 
   show [branch]       Displays information about the named or all
