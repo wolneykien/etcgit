@@ -176,7 +176,7 @@ _assert_branch() {
 
 show_head() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS"$(getopt -n $PROG -o h -l help -- "$@")" || show_usage
     eval set -- "$OPTS"
     while :; do
 	case "$1" in
@@ -221,7 +221,7 @@ EOF
 
 do_commit() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o b:,h -l branch:,help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o b:,h -l branch:,help -- "$@")" || show_usage
     eval set -- "$OPTS"
     local nbr=
     while :; do
@@ -286,7 +286,7 @@ EOF
 
 show_diff() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o h -l help -- "$@")" || show_usage
     eval set -- "$OPTS"
     while :; do
 	case "$1" in
@@ -321,7 +321,7 @@ EOF
 
 show_branches() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o u:,a,h -l url:,all,help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o u:,a,h -l url:,all,help -- "$@")" || show_usage
     eval set -- "$OPTS"
     local url=
     local all=
@@ -374,7 +374,7 @@ EOF
 
 show_default_branches() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o a,h -l all,help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o a,h -l all,help -- "$@")" || show_usage
     eval set -- "$OPTS"
     local all=
     while :; do
@@ -418,7 +418,7 @@ EOF
 
 show_commits() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o h -l help -- "$@")" || show_usage
     eval set -- "$OPTS"
     while :; do
 	case "$1" in
@@ -452,7 +452,7 @@ EOF
 
 show_services() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o h -l help -- "$@")" || show_usage
     eval set -- "$OPTS"
     while :; do
 	case "$1" in
@@ -487,7 +487,7 @@ EOF
 
 show_status() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o h -l help -- "$@")" || show_usage
     eval set -- "$OPTS"
     while :; do
 	case "$1" in
@@ -521,7 +521,7 @@ EOF
 
 do_fetch() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o f,h -l force,help -- "$@")" || show_usage
     eval set -- "$OPTS"
     local force=
     while :; do
@@ -575,7 +575,7 @@ EOF
 
 do_fetch_default() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o f,h -l force,help -- "$@")" || show_usage
     eval set -- "$OPTS"
     local force=
     while :; do
@@ -627,7 +627,7 @@ EOF
 
 do_reset() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o h -l help -- "$@")" || show_usage
     eval set -- "$OPTS"
     local force=
     while :; do
@@ -662,7 +662,7 @@ EOF
 
 do_delete() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o h -l help -- "$@")" || show_usage
     eval set -- "$OPTS"
     while :; do
 	case "$1" in
@@ -696,7 +696,7 @@ EOF
 
 do_checkout() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o a,f,m,n,u:,h -l async,force,meta-only,no-restart,url:,help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o a,f,m,n,u:,h -l async,force,meta-only,no-restart,url:,help -- "$@")" || show_usage
     eval set -- "$OPTS"
     local force=
     local async=
@@ -786,7 +786,7 @@ EOF
 
 do_push() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o f,h -l force,help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o f,h -l force,help -- "$@")" || show_usage
     local force=
     eval set -- "$OPTS"
     while :; do
@@ -835,7 +835,7 @@ EOF
 
 do_unpublish() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS=`getopt -n $PROG -o h -l help -- "$@"` || show_usage
+    local OPTS="$(getopt -n $PROG -o h -l help -- "$@")" || show_usage
     local force=
     eval set -- "$OPTS"
     while :; do
@@ -876,16 +876,16 @@ show_brief() {
 
     hd="$(_assert_head)" || exit $?
     if [ -n "$(_list_modified)" ]; then
-        echo -e "$hd+\\t$(get_branch_name)\\t$(get_head_message)"
+        echo "$hd+ $(get_branch_name) $(get_head_message)"
         return 1
     else
-        echo -e "$hd\\t$(get_branch_name)\\t$(get_head_message)"
+        echo "$hd $(get_branch_name) $(get_head_message)"
         return 0
     fi
 }
 
 
-OPTS=`getopt -n $PROG -o +q,v,V,h -l quiet,verbose,version,help -- "$@"` || show_usage
+OPTS="$(getopt -n $PROG -o +q,v,V,h -l quiet,verbose,version,help -- "$@")" || show_usage
 eval set -- "$OPTS"
 
 quiet=
