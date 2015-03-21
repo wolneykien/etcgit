@@ -382,9 +382,9 @@ _dump_file_permissions() {
 _apply_file_permissions() {
     local filter=
     for f in "$@"; do
-	filter="$filter -e '/^$f / p'"
+	    filter="$filter -e '/^$(echo "$f" | sed -e 's,/,\\/,g') / p'"
     done
-        eval "$(sed -n ${filter:--e 'p'} | sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
+        eval "$(eval "sed -n ${filter:--e 'p'}" | sed -e 's/^\(.*\) \(0[0-7][0-7][0-7]\):\([^:]\+\):\([^:]\+\)$/[ -h \1 ] || chown \3:\4 \1\n[ -h \1 ] || chmod \2 \1/')"
 }
 
 _test_smudge() {
