@@ -50,7 +50,7 @@ Commands:
   head [branch]       Outputs the current or the specified branch's
                       head hash with optional '+' (modified) mark.
 
-  commit message      Commits the current state to the current
+  commit [-m] message Commits the current state to the current
                       or the specified new branch recording the
                       supplied comment message.
 
@@ -221,9 +221,10 @@ EOF
 
 do_commit() {
     [ "${1:-}" != '--' ] || eval set -- -- "$@"
-    local OPTS="$(getopt -n $PROG -o b:,h -l branch:,help -- "$@")" || show_usage
+    local OPTS="$(getopt -n $PROG -o b:,m:,h -l branch:,message:,help -- "$@")" || show_usage
     eval set -- "$OPTS"
     local nbr=
+    local msg=
     while :; do
 	case "$1" in
 	    -b|--branch)
@@ -232,7 +233,7 @@ do_commit() {
 		;;
 	    -h|--help)
 		cat <<EOF
-Usage: $PROG $CMD [options] message [--] [file...]
+Usage: $PROG $CMD [options] [-m] message [--] [file...]
 
 Options: [-b NEW-BRANCH|--branch=NEW-BRANCH]
 
@@ -246,6 +247,8 @@ Use \`$PROG --help\` for general information about $PROG's usage.
 EOF
 		exit
 		;;
+            -m|--message)
+                shift; msg="$1";;
 	    --) shift; break;;
 	    *)
 		echo "Unrecognized option: $1"
@@ -257,8 +260,10 @@ EOF
 
     local br=
     local ret=0
-    if [ $# -gt 0 ]; then
-	local msg="$1"; shift
+    if [ -n "$msg" -o $# -gt 0 ]; then
+        if [ -z "$msg" ];  then
+	    msg="$1"; shift
+        fi
 	if [ -n "$nbr" ]; then
 	    commit_tree "$msg" "" "$nbr" ${1+-- "$@"}
 	    ret=$?
@@ -279,7 +284,7 @@ EOF
 	fi
 	return $ret
     else
-	echo "Usage: $PROG $CMD [options] message [--] [file...]" >&2
+	echo "Usage: $PROG $CMD [options] [-m] message [--] [file...]" >&2
 	exit 1
     fi
 }
@@ -733,7 +738,7 @@ the state defined by the current head or the given commit/branch
 optionally fetching it from the given URL (the -u option). The
 affected system services are restarted. If the -a option is passed the
 procedure is done asynchronously with the help of the \`at\` daemon.
-The -f option tells to forcily update the local branch with the same
+The -f option tells to forcely update the local branch with the same
 name. If the -n option is not given then the affected system services
 are stopped before checking out the configuration files and restarted
 after. However, with the -m option only the metadata is checked out.
@@ -771,6 +776,7 @@ EOF
 	if [ -n "$metaonly" ]; then
 	    checkout_meta "$hd" ${1+-- "$@"}
 	else
+            in_force="$force"
 	    if [ -z "$norestart" ]; then
 		reload_branch "$hd" ${1+-- "$@"}
 	    else
