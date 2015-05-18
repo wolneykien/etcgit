@@ -421,7 +421,7 @@ _list_modified() {
                         done
                 [ -n "$hd" ] && _restore_filters
                 git reset . 1>/dev/null 2>&1
-                [ -z "$newfiles" ] || git add $newfiles
+                [ -z "$newfiles" ] || git add -f -- $newfiles
 	)
 }
 
@@ -984,7 +984,7 @@ _get_diff() {
                 git reset . 1>/dev/null 2>&1
 	fi
         [ -n "$hd" ] && _restore_filters
-        [ -z "$newfiles" ] || git add $newfiles
+        [ -z "$newfiles" ] || git add -f -- $newfiles
 }
 
 get_diff() {
