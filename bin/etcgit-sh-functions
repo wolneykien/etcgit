@@ -397,6 +397,10 @@ _test_smudge() {
         [ $(git diff "$hd" -- "$file" 2>/dev/null | wc -l) -gt 0 ]
 }
 
+_get_new_files() {
+    git status --porcelain | sed -n -e '/^A/ { s/^A.[[:space:]]\+\([^[:space:]]\+.*\)[[:space:]]*$/\1/; H; $! { d } }' -e '$ { g; s/\n/ /g; s/^[[:space:]]\+//; s/[[:space:]]\+$//; p }'
+}
+
 _list_modified() {
     eval set -- "$(_normargs 1 "$@")"
         local hd="${1:-${in_branch-$(get_branch_head)}}"
@@ -404,6 +408,7 @@ _list_modified() {
     shift
 	(
 		_cd_if_git /etc || return 0
+                newfiles="$(_get_new_files)"
                 [ -e .gitignore ] && git add . 1>/dev/null 2>&1
                 _setup_branch_filters "$hd" "$@"
                 _dump_file_permissions "$@" >$PERMS
@@ -416,6 +421,7 @@ _list_modified() {
                         done
                 [ -n "$hd" ] && _restore_filters
                 git reset . 1>/dev/null 2>&1
+                [ -z "$newfiles" ] || git add $newfiles
 	)
 }
 
@@ -966,6 +972,7 @@ _get_diff() {
 	[ -n "$hd" ] || return 1
     shift
 
+        newfiles="$(_get_new_files)"
         _setup_branch_filters "$hd" ${1+-- "$@"}
 	_dump_file_permissions >"$PERMS"
 	git add -f "$@" "$PERMS" 1>/dev/null 2>&1
@@ -977,6 +984,7 @@ _get_diff() {
                 git reset . 1>/dev/null 2>&1
 	fi
         [ -n "$hd" ] && _restore_filters
+        [ -z "$newfiles" ] || git add $newfiles
 }
 
 get_diff() {
